@@ -2,9 +2,9 @@
 This project creates an IoT-like management system for a laboratory environment, allowing the remote monitoring and
 management of multiple equipment through a web platform.
 
-###Implementation Progress
+### Implementation Progress
 
-#####High priority infrastructure
+##### High priority infrastructure
 - [ ] Web interface
     - [ ] Welcome screen
     - [x] Devices screen
@@ -34,7 +34,7 @@ management of multiple equipment through a web platform.
 - [ ] User authentication
 - [ ] Database backend for data storage
 
-#####Future
+##### Future
 - [ ] Advanced data processing
 - [ ] Multiple dataflow data types (Only single precision floats are currently supported)
 - [ ] Sensor value threshold notification
