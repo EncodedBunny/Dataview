@@ -1,0 +1,421 @@
+@import url('https://fonts.googleapis.com/css?family=Roboto&display=swap')
+@import url('https://fonts.googleapis.com/css?family=Ubuntu+Mono&display=swap')
+
+@mixin center
+	position: absolute
+	top: 50%
+	left: 50%
+	transform: translate(-50%, -50%)
+
+@mixin focusable($color)
+	&:hover
+		background-color: lighten($color, 5%)
+
+$primary: #303f9f
+$secondary: #2e7d32
+$background: #303030
+$background-light: #424242
+$background-dark: #212121
+$background-black: #000000
+$text: #fafafa
+$danger: #b71c1c
+
+body
+	padding: 10px
+	font: 14px "Lucida Grande", Helvetica, Arial, sans-serif
+	background-color: $background
+	font-family: 'Roboto', sans-serif
+	color: $text
+	user-select: none
+	font-weight: normal
+
+a
+	color: $text
+	margin: 0 0 0 0 // 32px
+	padding: 8px 8px 8px 0
+	text-decoration: none
+	font-size: 25px
+	display: block
+
+button
+	border-radius: 4px
+	height: 36px
+	outline: none
+	border: none
+	display: inline-flex
+	align-items: center
+	justify-content: center
+	align-content: center
+	text-align: center
+	background-color: $background-dark
+	font-size: 0.875rem
+	font-family: 'Roboto', sans-serif
+	text-transform: uppercase
+	font-weight: normal
+	letter-spacing: 1.25px
+	text-decoration-style: solid
+	text-rendering: auto
+	color: $text
+	padding: 0 16px 0 16px
+	overflow: hidden
+	box-shadow: 0 1px 1px -2px rgba($background-black, 0.2)
+	cursor: pointer
+
+span
+	display: inline-flex
+	align-items: center
+
+input[type=text]
+	border-top: none
+	border-right: none
+	border-left: none
+	border-bottom: solid darken($text, 20%) 2px
+	outline: none
+	background-color: transparent
+	font-family: 'Roboto', sans-serif
+	color: $text
+	height: 30px
+	font-size: large
+	transition: box-shadow 0.3s ease-in-out, border-bottom 0.3s ease-in-out
+	&:hover
+		border-bottom: solid darken($text, 10%) 2px
+	&:focus
+		box-shadow: inset 0px -12px 10px -15px darken($text, 5%)
+		border-bottom: solid darken($text, 5%) 2px
+
+select
+	background: $background-dark
+	font-family: 'Roboto', sans-serif
+	color: $text
+	padding: 5px
+	border: none
+	outline: none
+	font-size: large
+
+input::-webkit-calendar-picker-indicator:hover
+	background-color: $background-dark
+
+ul
+	list-style: none
+	padding: 0
+	.inner
+		padding-left: 0
+		height: 0
+		display: none
+		a
+			font-size: 20px
+		li
+			padding-left: 32px
+		&.active
+			display: block
+			height: 100%
+
+.topnav
+	margin: 0
+	display: flex
+	flex-flow: row nowrap
+	justify-content: flex-start
+	background-color: $background-dark
+	li
+		@include focusable($background-dark)
+		padding: 0
+		margin: 0
+		cursor: pointer
+		&.clickable
+			&:active
+				background-color: $background-light
+		a
+			display: inline-block
+			text-align: center
+			padding: 14px 16px
+			font-size: 18px
+		&:hover
+			div
+				display: flex
+				flex-direction: column
+				li
+					@include focusable($background-dark)
+					position: relative
+					border-bottom: 1px solid darken($background-dark, 5%)
+					&:last-child
+						border-bottom: none
+					ul
+						display: none
+						position: absolute
+						width: 14em
+						top: 0
+						left: 99%
+						background-color: $background-dark
+						li
+							background-color: $background-dark
+							border-left: 1px solid darken($background-dark, 5%)
+							a
+								&:active
+									background-color: $background-light
+					&:hover
+						ul
+							display: block
+		div
+			display: none
+			position: absolute
+			background-color: $background-dark
+			width: 10em
+			a
+				@include focusable($background-dark)
+				display: block
+				text-align: left
+
+.screenDivContainer
+	@include center
+	box-shadow: 0 0 17px -1px rgba($background-black, 0.75)
+
+.menuArrow
+	width: 16px
+	height: 16px
+	background-image: url("../images/arrow.svg")
+	background-repeat: no-repeat
+	margin: auto 8px auto 0
+	transition: transform 0.2s ease
+	&.active
+		transform: rotate(90deg)
+
+.vbox
+	display: flex
+	flex-direction: column
+
+.hbox
+	display: flex
+	flex-direction: row
+	justify-content: stretch
+
+.waves-button
+	&.primary
+		background-color: $primary
+	&.secondary
+		background-color: $secondary
+
+.content
+	margin-left: 250px
+
+.pageTitle
+	font-size: xx-large
+
+.devicesGroupContainer
+	display: flex
+	align-content: space-evenly
+	justify-content: flex-start
+	flex-direction: row
+	flex-wrap: wrap
+
+.container
+	display: flex
+	flex-flow: column
+	position: relative
+	background-color: rgba($background-dark, 0.2)
+	border-radius: 10px
+	margin: 5px 10px 5px 0
+	&.device
+		width: 300px
+		height: 300px
+	&.sensor
+		width: 600px
+		height: 600px
+	&.placeholder
+		border-style: dashed
+		border-color: rgba($background-dark, 0.5)
+		border-width: 10px
+		box-sizing: border-box
+		text-align: center
+
+.mainView
+	flex: 1 1 auto
+	display: flex
+	align-items: center
+	justify-content: center
+
+.graphHolder
+	width: 95%
+	height: 95%
+
+.centerText
+	text-align: center
+
+.title
+	display: block
+	font-size: xx-large
+	text-align: center
+	padding-top: 0.67em
+
+.subtitle
+	display: block
+	color: darken($text, 10%)
+	font-weight: normal
+	font-style: italic
+	margin-top: 5px
+	&.inline
+		margin: 0
+		display: inline
+
+.lowerRight
+	position: absolute
+	bottom: 0
+	right: 0
+
+.plusCircleButton
+	@include center
+	background-color: rgba($background-light, 0.4)
+	width: 100px
+	height: 100px
+	border-radius: 50%
+	display: grid
+	cursor: pointer
+	transition: background-color 0.2s ease-in-out
+	&:hover
+		background-color: rgba($background-light, 0.6)
+	&:active
+		background-color: rgba($background-light, 0.8)
+
+span.plusCircleText
+	@include center
+	font-size: 72pt
+	color: rgba($background-dark, 0.6)
+
+.activeMenuItem
+	background-color: $background
+	cursor: default
+	ul
+		background-color: darken($background, 3%)
+
+li.menuItem
+	padding: 0
+	a
+		padding: 8px 8px 8px 0
+		margin: 0
+
+.menuItemHeader
+	display: flex
+	flex-direction: row
+	justify-content: flex-start
+	align-content: center
+	padding-left: 8px
+	&.noChildren
+		padding-left: 32px
+
+.sidenav
+	height: 100%
+	width: 250px
+	position: fixed
+	z-index: 1
+	top: 0
+	left: 0
+	background-color: $background-dark
+	overflow-x: hidden
+	margin-top: 0
+	padding-top: 60px
+	a
+		font-weight: normal
+		transition: color 0.2s ease-in-out
+		&:not(.activeMenuItem)
+			&:hover
+				color: #c7c7c7
+
+.footer
+	//position: absolute
+	//bottom: 0
+	//right: 0
+	display: flex
+	flex-direction: row
+	justify-content: space-between
+	//width: 100%
+
+.window
+	//@include center
+	background-color: $background-dark
+	display: flex
+	flex-direction: column
+	//border-radius: 10px
+
+.windowTitleBar
+	background-color: darken($background-dark, 2%)
+	display: flex
+	flex-direction: row
+	justify-content: flex-end
+	//border-top-left-radius: 10px
+	//border-top-right-radius: 10px
+
+.windowTitleSpan
+	margin: auto
+	display: block
+
+.windowContent
+	padding: 20px
+	flex-grow: 1
+
+.windowContentHolder
+	margin-bottom: 50px
+
+.closeButton
+	@include focusable($background-dark)
+	background-color: $background-dark !important
+	display: inline !important
+	margin: 0 !important
+	//border-top-right-radius: 10px !important
+	//border-bottom-right-radius: 0 !important
+	border-radius: 0 !important
+	&:hover
+		background-color: lighten($background-dark, 5%) !important
+
+.dangerButton
+	@include focusable($danger)
+	background-color: $danger !important
+
+.screenDiv
+	background-color: rgba($background-black, 0.5)
+	transition: opacity 0.2s ease-in
+	position: fixed
+	width: 100%
+	height: 100%
+	margin: 0
+	top: 0
+	left: 0
+	z-index: 2
+
+.centerElement
+	@include center
+
+.form
+	display: flex
+	flex-direction: column
+
+.formLine
+	margin: 5px 0 5px 0
+
+.formItem
+	margin: 0 5px 0 5px
+	width: 100%
+	flex-grow: 1
+
+.errorText
+	font-weight: bold
+	color: #e57373
+
+.errorStatus
+	text-align: center
+	margin-bottom: 60px
+	font-weight: normal
+
+.errorHeader
+	margin-bottom: 0
+	text-align: center
+	font-size: xx-large
+	font-weight: normal
+
+.stackTraceHeader
+	font-weight: normal
+	margin-bottom: -5px
+
+.stackTraceText
+	user-select: text
+	color: #ffffff
+	font-family: 'Ubuntu Mono', monospace
+	margin-left: 70px

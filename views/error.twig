@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Error {{ error.status }}</title>
+	<link href="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.css" rel="stylesheet">
+	<script src="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.js"></script>
+	<link rel='stylesheet' href='/stylesheets/style.css' />
+</head>
+<body>
+<div>
+	<h1 class="errorHeader">An error has occurred :(</h1>
+	{% if error is empty %}
+		<h2 class="errorStatus"><span class="errorText">500</span> - Internal Server Error</h2>
+	{% else %}
+		<h2 class="errorStatus"><span class="errorText">{{error.status}}</span> - {{message}}</h2>
+		<h2 class="stackTraceHeader">Stack trace:</h2>
+		<pre class="stackTraceText">{{error.stack}}</pre>
+	{% endif %}
+</div>
+</body>
+</html>

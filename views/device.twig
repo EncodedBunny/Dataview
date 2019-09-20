@@ -1,0 +1,136 @@
+{% extends 'layout.twig' %}
+
+{% block body %}
+	<div class="devicesGroupContainer" id="sensorsGroupContainer"></div>
+{% endblock %}
+
+{% block scripts %}
+	<script type="text/javascript" src="/javascripts/dataflowEditor.js"></script>
+	<script type="text/javascript">
+		let root = document.getElementById("sensorsGroupContainer");
+		root.appendChild(createPlaceholderContainer(600, 400, "addSensor"));
+		let sensorLayout = {{ sensorLayout|json_encode|raw }};
+		let device = {{ device|json_encode|raw }};
+		let graphs = {};
+		for(const sensor of device.sensors)
+			graphs[sensor.id] = {graph: createSensorContainer(sensor.type, sensor.id), x: 0, nodePath: Dataflow.registerNode(data.name + "(" + device.name + ")", "Sensors", [], ["value"], () => {
+					return [0]; // TODO: Get from special list and return actual sensor value
+				})};
+		socket.emit("listenDevice", device.name);
+		socket.on("sensorData", (updates) => {
+			for(const sensor of updates){
+				if(graphs[sensor.id]) {
+					graphs[sensor.id].graph.data.datasets[0].data.push(sensor.data);
+					graphs[sensor.id].graph.data.labels.push(graphs[sensor.id].x++);
+					if(graphs[sensor.id].graph.data.datasets[0].data.length > 11) {
+						graphs[sensor.id].graph.data.datasets[0].data.shift();
+						graphs[sensor.id].graph.data.labels.shift();
+					}
+					graphs[sensor.id].graph.update({animation: 0});
+				}
+			}
+		});
+		Waves.init();
+		document.getElementById("addSensor").addEventListener("click", () => {
+			let temp = {
+				"name": {"type": "textbox", "isTitled": true, "title": "Sensor Name"}
+			};
+			let window = displayWindow("Add New Sensor", 450, createForm(temp, "next", (data) => {
+				closeWindow(window);
+				let configureWindow = displayWindow("Configure Sensor", 450, createForm(sensorLayout, "add sensor", (extraData) => {
+					socket.emit("addSensor", {deviceName: device.name, sensorName: data.name, extraData: extraData}, (id) => {
+						if(id >= 0) {
+							graphs[id] = {graph: createSensorContainer(data.name, id), x: 0, nodePath: Dataflow.registerNode(data.name + "(" + device.name + ")", "Sensors", [], ["value"], () => {
+								return [0];
+							})};
+						} else
+							alert("An error has occurred");
+						closeWindow(configureWindow);
+					});
+				}));
+			}));
+		});
+
+		function createSensorContainer(name, id){
+			let container = createContainer(600, 400);
+			let title = document.createElement("span");
+			title.appendChild(document.createTextNode(name));
+			title.classList.add("centerText", "title");
+			container.header.appendChild(title);
+			let graphHolder = document.createElement("div");
+			graphHolder.classList.add("graphHolder");
+			let graphCanvas = document.createElement("canvas");
+			graphHolder.appendChild(graphCanvas);
+			container.mainView.appendChild(graphHolder);
+			let graph = new Chart(graphCanvas.getContext("2d"), {
+				scaleOverride : true,
+				scaleSteps : 10,
+				scaleStepWidth : 50,
+				scaleStartValue : 0,
+				type: 'line',
+				data: {
+					datasets: [{
+						fill: 'origin',
+						data: [],
+						borderColor: 'rgba(48, 63, 159, 1)',
+						borderWidth: 2,
+						pointBorderColor: 'rgba(48, 63, 159, 1)',
+						outerGlowColor: 'rgba(60, 78, 194, 1)',
+						outerGlowWidth: 5,
+						pointRadius: 1
+					}]
+				},
+				options: {
+					responsive: true,
+					scales: {
+						yAxes: [{
+							ticks: {
+							}
+						}],
+						xAxes: [{
+							display: true,
+							ticks: {
+								stepSize: 1,
+								maxTicksLimit: 10
+							}
+						}]
+					},
+					plugins: {
+						filler: {
+							propagate: true
+						}
+					},
+					legend: {
+						display: false
+					},
+					tooltips: {
+						enabled: false
+					},
+					animation: {
+						duration: 400
+					}
+				}
+			});
+			let removeButton = createButton("remove", "dangerButton");
+			removeButton.onclick = () => {
+				if(graphs[id]){
+					socket.emit("removeSensor", {deviceName: device.name, sensorID: id}, (status) => {
+						console.log(">> " + status);
+						if(status && graphs[id]){
+							root.removeChild(container);
+							Dataflow.unregisterNode(graphs[id].nodePath);
+							graphs[id] = undefined;
+						}
+					});
+				}
+			};
+			container.footer.appendChild(removeButton);
+			let configureButton = createButton("configure");
+			container.footer.appendChild(configureButton);
+			let addToExpButton = createButton("add to experiment");
+			container.footer.appendChild(addToExpButton);
+			root.insertBefore(container, root.lastChild);
+			return graph;
+		}
+	</script>
+{% endblock %}

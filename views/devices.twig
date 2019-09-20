@@ -1,0 +1,60 @@
+{% extends 'layout.twig' %}
+
+{% block body %}
+	<div class="devicesGroupContainer" id="devicesGroupContainer"></div>
+{% endblock %}
+
+{% block scripts %}
+	<script type="text/javascript">
+		let root = document.getElementById("devicesGroupContainer");
+		root.appendChild(createPlaceholderContainer(300, 300, "addDevice"));
+		let deviceForms = {{ deviceForms|json_encode|raw }};
+		let installedDrivers = {{ installedDrivers|json_encode|raw }};
+		let devices = {{ devices|json_encode|raw }};
+		for(const device of devices)
+			createDeviceContainer(device.formattedDevice, device.name);
+		let currentForm = deviceForms[installedDrivers[0]];
+		const baseForm = {
+			"name": {"type": "textbox", "isTitled": true},
+			"device": {"type": "list", "isTitled": true, "items": installedDrivers, "listeners": [{"event": "click", "callback": (e) => {
+				currentForm = deviceForms[e.target.value];
+			}}]}
+		};
+		Waves.init();
+		document.getElementById("addDevice").addEventListener("click", () => {
+			let newDeviceWindow = displayWindow("Add New Device", 450, createForm(baseForm, "next", (baseDevice) => {
+				closeWindow(newDeviceWindow);
+				let configWindow = displayWindow("Add New " + baseDevice.device, 450, createForm(currentForm, "add device", (data) => {
+					let link = cleanString(baseDevice.name);
+					socket.emit("addDevice", {name: baseDevice.name, link: link, device: baseDevice.device, extraData: data}, (status) => {
+						closeWindow(configWindow);
+						if(status) {
+							createDeviceContainer(baseDevice.device, baseDevice.name);
+							let currentLoc = window.location.pathname;
+							window.location.replace(currentLoc + (currentLoc.endsWith("/") ? "" : "/") + link);
+						} else{
+							alert("An error occurred");
+						}
+					});
+				}));
+			}));
+		});
+
+		function createDeviceContainer(device, name){
+			let container = createContainer(300, 300);
+			let title = document.createElement("span");
+			title.appendChild(document.createTextNode(name));
+			title.classList.add("centerText", "title");
+			container.header.appendChild(title);
+			let subtitle = document.createElement("span");
+			subtitle.appendChild(document.createTextNode(device));
+			subtitle.classList.add("centerText", "subtitle");
+			container.header.appendChild(subtitle);
+			let removeButton = createButton("remove", "dangerButton");
+			container.footer.appendChild(removeButton);
+			let configureButton = createButton("configure");
+			container.footer.appendChild(configureButton);
+			root.insertBefore(container, root.lastChild);
+		}
+	</script>
+{% endblock %}

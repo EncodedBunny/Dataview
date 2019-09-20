@@ -1,0 +1,14 @@
+{% extends 'layout.twig' %}
+
+{% block body %}
+	<div class="devicesGroupContainer" id="sensorsGroupContainer"></div>
+{% endblock %}
+
+{% block scripts %}
+	<script type="text/javascript">
+		let root = document.getElementById("sensorsGroupContainer");
+		root.appendChild(createPlaceholderContainer(600, 400, "addSensor"));
+		let experiment = {{ experiment|json_encode|raw }};
+		Waves.init();
+	</script>
+{% endblock %}
