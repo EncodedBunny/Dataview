@@ -14,7 +14,25 @@
 {% endblock %}
 
 {% block body %}
-	<div class="devicesGroupContainer" id="experimentsGroupContainer"></div>
+	<div class="devicesGroupContainer" id="experimentsGroupContainer">
+		{% for experiment in experiments %}
+			<div class="container" style="width: 300px; height: 300px">
+				<header>
+					<span class="centerText title">{{ experiment.name }}</span>
+				</header>
+				<div class="mainView"></div>
+				<footer class="footer">
+					<button class="dangerButton waves-light waves-button waves-float">Remove</button>
+					<button class="waves-light waves-button waves-float" onclick="enterSublink('{{ experiment.link }}')">View</button>
+				</footer>
+			</div>
+		{% endfor %}
+		<div class="container placeholder" style="width: 300px; height: 300px;">
+			<div class="plusCircleButton" id="addExperiment">
+				<span class="plusCircleText">+</span>
+			</div>
+		</div>
+	</div>
 {% endblock %}
 
 {% block scripts %}
@@ -22,9 +40,8 @@
 	<script type="text/javascript">
 		let registeredNodes = {{ registeredNodes|json_encode|raw }};
 		let experiments = {{ experiments|json_encode|raw }};
-
+		
 		let root = document.getElementById("experimentsGroupContainer");
-		root.appendChild(createPlaceholderContainer(300, 300, "addExperiment"));
 		for(const cat of Object.keys(registeredNodes)) {
 			for(const t of Object.keys(registeredNodes[cat].nodes)) {
 				let node = registeredNodes[cat].nodes[t];
@@ -42,14 +59,15 @@
 				let li = document.createElement("li");
 				li.id = "nodeItem-" + cat + "-" + t;
 				let nodeLink = document.createElement("a");
-				nodeLink.appendChild(document.createTextNode(node.title));
 				let openPar = node.title.indexOf("("), closePar = node.title.indexOf(")");
-				if (openPar >= 0 && closePar > 1 && openPar < closePar + 1 && !(closePar + 1 < node.title.length && openPar === 0)) {
+				if(openPar >= 0 && closePar > 1 && openPar < closePar + 1 && !(closePar + 1 < node.title.length && openPar === 0)) {
 					let extraInfoSpan = document.createElement("span");
 					extraInfoSpan.classList.add("subtitle", "inline");
+					nodeLink.appendChild(document.createTextNode(node.title.substring(0, openPar)));
 					extraInfoSpan.appendChild(document.createTextNode(" " + node.title.substring(openPar, closePar + 1)));
 					nodeLink.appendChild(extraInfoSpan);
-				}
+				} else
+					nodeLink.appendChild(document.createTextNode(node.title));
 				nodeLink.onclick = () => {
 					if(currentEditor) currentEditor.addNode(cat + "/" + t);
 				};
@@ -58,19 +76,16 @@
 				Dataflow.registerNode(node.title, node.category, node.inputLabels, node.outputLabels);
 			}
 		}
-		for(const experiment of experiments) {
-			console.log(experiment);
-			createExperimentContainer(experiment.name);
-		}
 		const baseForm = {
 			"name": {"type": "textbox", "isTitled": true}
 		};
 		Waves.init();
 		document.getElementById("addExperiment").addEventListener("click", () => {
 			let newSensorWindow = displayWindow("Add New Experiment", 450, createForm(baseForm, "add", (data) => {
-				socket.emit("addExperiment", {name: data.name, link: cleanString(data.name)}, (status) => {
+				let link = cleanString(data.name);
+				socket.emit("addExperiment", {name: data.name, link: link}, (status) => {
 					if(status)
-						createExperimentContainer(data.name);
+						enterSublink(link);
 					else
 						alert("An error occurred");
 					closeWindow(newSensorWindow);
@@ -83,18 +98,5 @@
 			displayEditor();
 		};
 		root.appendChild(displayBtn);
-
-		function createExperimentContainer(name){
-			let container = createContainer(300, 300);
-			let title = document.createElement("span");
-			title.appendChild(document.createTextNode(name));
-			title.classList.add("centerText", "title");
-			container.header.appendChild(title);
-			let removeButton = createButton("remove", "dangerButton");
-			container.footer.appendChild(removeButton);
-			let configureButton = createButton("configure");
-			container.footer.appendChild(configureButton);
-			root.insertBefore(container, root.lastChild);
-		}
 	</script>
 {% endblock %}
