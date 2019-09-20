@@ -3,6 +3,7 @@ This project creates an IoT-like management system for a laboratory environment,
 management of multiple equipment through a web platform.
 
 ###Implementation Progress
+
 #####High priority infrastructure
 - [ ] Web interface
     - [ ] Welcome screen
@@ -32,6 +33,7 @@ management of multiple equipment through a web platform.
     - [ ] Non-linear axis
 - [ ] User authentication
 - [ ] Database backend for data storage
+
 #####Future
 - [ ] Advanced data processing
 - [ ] Multiple dataflow data types (Only single precision floats are currently supported)
