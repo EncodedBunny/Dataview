@@ -61,24 +61,24 @@ function displayWindow(title, width, content){
 function displayEditor(){
 	if(!currentEditor) {
 		document.getElementById("editorContainer").setAttribute("style","display: block");
-		
+
 		let canvas = document.getElementById("editorCanvas");
-		canvas.width = Math.floor(screenDiv.offsetWidth * 0.9);
-		canvas.height = Math.floor(screenDiv.offsetHeight * 0.9);
-		
+		canvas.width = Math.ceil(screenDiv.offsetWidth * 0.9);
+		canvas.height = Math.ceil(screenDiv.offsetHeight * 0.9);
+
 		let topMenu = document.getElementById("editorMenu");
 		topMenu.setAttribute("style", "width: " + canvas.width + "px");
-		
+
 		let close = document.getElementById("editorMenu-close");
 		close.onclick = () => {
 			closeEditor();
 		};
-		
+
 		toggleScreenDiv(true);
 		currentEditor = new DataflowEditor(dataflow, canvas);
 	} else
 		toggleScreenDiv(true);
-	
+
 	return currentEditor;
 }
 
@@ -86,12 +86,12 @@ function closeEditor(){
 	if(currentEditor) {
 		let topMenu = document.getElementById("editorMenu");
 		topMenu.setAttribute("style", "");
-		
+
 		document.getElementById("editorContainer").setAttribute("style","display: none");
-		
+
 		currentEditor.close();
 		currentEditor = undefined;
-		
+
 		toggleScreenDiv(false);
 	}
 }
@@ -289,44 +289,44 @@ function createPlaceholderContainer(width, height, buttonId){
 function fontHeight(font, text) {
 	let canvas = document.getElementById("fontMetricCanvas");
 	let context = canvas.getContext("2d");
-	
+
 	let width = canvas.width;
 	let height = canvas.height;
-	
+
 	context.save();
 	context.resetTransform();
 	context.font = font;
 	context.textAlign = "left";
 	context.textBaseline = "top";
 	context.fillText(text,25,5, width);
-	
+
 	let data = context.getImageData(0,0, width, height).data;
-	
+
 	let findFirst = (reverse) => {
 		for(let y = reverse ? height : 0; (reverse ? y > 0 : y < height); (reverse ? y-- : y++))
 			for(let x = 0; x < width; x++)
 				if(data[((width * y) + x) * 4 + 3] > 0)
 					return y;
 	};
-	
+
 	let h = findFirst(true)-findFirst(false);
-	
+
 	context.clearRect(0,0, width, height);
 	context.restore();
-	
+
 	return h;
 }
 
 function fontWidth(font, text){
 	let canvas = document.getElementById("fontMetricCanvas");
 	let context = canvas.getContext("2d");
-	
+
 	context.save();
 	context.resetTransform();
 	context.font = font;
 	let width = context.measureText(text).width;
 	context.restore();
-	
+
 	return width;
 }
 

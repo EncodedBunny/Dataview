@@ -1,79 +1,38 @@
-{% extends 'layout.twig' %}
-
-{% block body %}
-	<p>Welcome to {{title}}</p>
-	<canvas width="200px" height="200px" id="myChart" style="width: 300px; height: 300px;"></canvas>
-{% endblock %}
-
-{% block scripts %}
+<html>
+<head>
+	<title>{{ title }}</title>
+	<link rel='stylesheet' href='/stylesheets/style.css' />
+	<link rel="stylesheet" href="/stylesheets/waves.css"/>
+	<link rel='stylesheet' href='/stylesheets/login.css' />
+	<script type="text/javascript" src="/javascripts/waves.min.js"></script>
+</head>
+<body>
+	<h1 class="title">Dataview</h1>
+	<div class="screenDivContainer loginBox">
+		<form method="post" action="/" onsubmit="hashPassword()">
+			<div>
+				<span>Username</span>
+				<input type="text" id="user" name="user"></input>
+			</div>
+			<br>
+			<div>
+				<span>Password</span>
+				<input type="password" id="password" name="password"></input>
+			</div>
+			<br>
+			<footer>
+				<button id="submitButton" onsubmit="attemptLogin()">Enter</button>
+			</footer>
+		</form>
+	</div>
 	<script type="text/javascript">
-		document.addEventListener("click", () => {
-			a(Math.random());
-		});
+		Waves.attach(document.getElementById("submitButton"), ["waves-button"]);
+		Waves.init();
 
-		let ctx = document.getElementById('myChart').getContext('2d');
-		ctx.width = 300;
-		ctx.height = 300;
-		let myChart = new Chart(ctx, {
-			scaleOverride : true,
-			scaleSteps : 10,
-			scaleStepWidth : 50,
-			scaleStartValue : 0,
-			type: 'line',
-			devicePixelRatio: 2,
-			data: {
-				datasets: [{
-					fill: 'origin',
-					data: [],
-					borderColor: 'rgba(255, 159, 64, 1)',
-					borderWidth: 1
-				}]
-			},
-			options: {
-				responsive: true,
-				maintainAspectRatio: false,
-				scales: {
-					yAxes: [{
-						ticks: {
-						}
-					}],
-					xAxes: [{
-						display: true,
-						ticks: {
-							stepSize: 1,
-							maxTicksLimit: 10
-						}
-					}]
-				},
-				plugins: {
-					filler: {
-						propagate: true
-					}
-				},
-				legend: {
-					display: false
-				},
-				tooltips: {
-					enabled: false
-				},
-				animation: {
-					duration: 400
-				}
-			}
-		});
+		function hashPassword(){
+			let pwd = document.getElementById("password");
 
-		socket.on("graphData", (data) => {
-			a(data);
-		});
-		let i = 0;
-		function a(data){
-			myChart.data.datasets[0].data.push(Math.random());
-			myChart.data.labels.push(i++);
-			if(myChart.data.datasets[0].data.length > 10) {
-				myChart.data.datasets[0].data.shift();
-				myChart.data.labels.shift();
-			}
-			myChart.update({animation: 0});
 		}
 	</script>
-{% endblock %}
+</body>
+</html>
