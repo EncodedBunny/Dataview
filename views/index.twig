@@ -1,15 +1,15 @@
 <html>
 <head>
 	<title>{{ title }}</title>
-	<link rel='stylesheet' href='/stylesheets/style.css' />
+	<link rel="stylesheet" href="/stylesheets/style.css" />
 	<link rel="stylesheet" href="/stylesheets/waves.css"/>
-	<link rel='stylesheet' href='/stylesheets/login.css' />
+	<link rel="stylesheet" href="/stylesheets/login.css" />
 	<script type="text/javascript" src="/javascripts/waves.min.js"></script>
 </head>
 <body>
 	<h1 class="title">Dataview</h1>
 	<div class="screenDivContainer loginBox">
-		<form method="post" action="/" onsubmit="hashPassword()">
+		<form method="post" action="/" id="loginForm" name="loginForm">
 			<div>
 				<span>Username</span>
 				<input type="text" id="user" name="user"></input>
@@ -21,18 +21,40 @@
 			</div>
 			<br>
 			<footer>
-				<button id="submitButton" onsubmit="attemptLogin()">Enter</button>
+				<button id="submitButton">Enter</button>
 			</footer>
 		</form>
 	</div>
 	<script type="text/javascript">
 		Waves.attach(document.getElementById("submitButton"), ["waves-button"]);
 		Waves.init();
-
-		function hashPassword(){
-			let pwd = document.getElementById("password");
-
-		}
+		 
+		document.loginForm.onsubmit = function(){
+			/**
+			*	Credits to https://8gwifi.org/docs/window-crypto-pbkdf.jsp
+			*/
+			let encoder = new TextEncoder("utf-8");
+		    let salt = encoder.encode(document.getElementById("user").value);
+		    let pwdKey = encoder.encode(document.getElementById("password").value);
+			
+			window.crypto.subtle.importKey("raw", pwdKey, {name: "PBKDF2"}, false, ["deriveBits", "deriveKey"]).then(function(key) {
+				return window.crypto.subtle.deriveKey(
+					{"name": "PBKDF2", "salt": salt, "iterations": 1000, "hash": "SHA-256"},
+					key,
+					{"name": "AES-CBC", "length": 256},
+					true,
+					[ "encrypt", "decrypt" ]
+				);
+			}).then(function (webKey) {
+				return crypto.subtle.exportKey("raw", webKey);
+			}).then(function (buffer) {
+				let decoder = new TextDecoder("utf-8");
+				document.getElementById("password").value = new Uint8Array(buffer).reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '');
+				document.loginForm.submit();
+			});
+			
+			return false;
+		};
 	</script>
 </body>
 </html>
