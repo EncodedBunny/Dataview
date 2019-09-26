@@ -1,7 +1,28 @@
 {% extends 'layout.twig' %}
 
 {% block body %}
-	<div class="devicesGroupContainer" id="sensorsGroupContainer"></div>
+	<h1 class="pageTitle">Experiment "{{ experiment.name }}"</h1>
+	<button class="waves-button waves-float waves-ripple">Edit Dataflow</button>
+	<h2 class="pageSubtitle">Sensors</h2>
+		<table class="ls-ss-id">
+			<thead>
+				<tr>
+					<th col-size="medium">Name</th>
+					<th col-size="medium">Device</th>
+					<th col-size="uuid">ID</th>
+				</tr>
+			</thead>
+			<tbody id="tableBody">
+			</tbody>
+		</table>
+	<div class="devicesGroupContainer" id="sensorsGroupContainer">
+		<div class="container placeholder" style="width: 300px; height: 300px;">
+			<div class="plusCircleButton" id="addExperiment">
+				<span class="plusCircleText">+</span>
+			</div>
+		</div>
+	</div>
+	<h2 class="pageSubtitle">Graphs</h2>
 {% endblock %}
 
 {% block scripts %}
@@ -10,5 +31,32 @@
 		root.appendChild(createPlaceholderContainer(600, 400, "addSensor"));
 		let experiment = {{ experiment|json_encode|raw }};
 		Waves.init();
+		
+		let tBody = document.getElementById("tableBody");
+		for(let i = 0; i < 100; i++){
+			let tr = document.createElement("tr");
+			let name = document.createElement("td");
+			name.appendChild(document.createTextNode("Test Sensor"));
+			name.setAttribute("col-size", "medium");
+			tr.appendChild(name);
+			let dev = document.createElement("td");
+			dev.appendChild(document.createTextNode("CR10X"));
+			dev.setAttribute("col-size", "medium");
+			tr.appendChild(dev);
+			let uuid = document.createElement("td");
+			uuid.appendChild(document.createTextNode(create_UUID()));
+			uuid.setAttribute("col-size", "uuid");
+			tr.appendChild(uuid);
+			tBody.appendChild(tr);
+		}
+		
+		function create_UUID(){
+			let dt = new Date().getTime();
+			return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+				let r = (dt + Math.random()*16)%16 | 0;
+				dt = Math.floor(dt/16);
+				return (c === 'x' ? r :(r&0x3|0x8)).toString(16);
+			});
+		}
 	</script>
 {% endblock %}

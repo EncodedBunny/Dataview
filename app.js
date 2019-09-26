@@ -5,10 +5,7 @@ module.exports = function(port){
 	const cookieParser = require('cookie-parser');
 	const logger = require('morgan');
 	const sassMiddleware = require('node-sass-middleware');
-	//const fs = require("fs");
 	const http = require('http');
-	//const privateKey  = fs.readFileSync('sslcert/server.key', 'utf8');
-	//const certificate = fs.readFileSync('sslcert/server.crt', 'utf8');
 
 	const driverManager = require('./driverManager');
 	const deviceManager = require('./deviceManager')(driverManager);
@@ -83,7 +80,7 @@ module.exports = function(port){
 		linkFunction("addDevice", deviceManager.addDevice,["name", "device", "link", "extraData"]);
 		linkFunction("getDevice", deviceManager.getDevice,["link"]);
 		linkFunction("getDevices", deviceManager.getDevices);
-
+		
 		socket.on("listenDevice", (device, res) => {
 			let dev = deviceManager.getDeviceByName(device);
 			let status = false;
@@ -95,14 +92,21 @@ module.exports = function(port){
 			}
 			if(res && typeof res === "function") res(status);
 		});
-
+		
 		linkFunction("addSensor", deviceManager.addSensor,["deviceName", "sensorName", "extraData"]);
 		linkFunction("removeSensor", deviceManager.removeSensor,["deviceName", "sensorID"]);
-
+		
 		linkFunction("addExperiment", experimentManager.addExperiment,["name", "link"]);
 		linkFunction("getExperiment", experimentManager.getExperiment,["link"]);
 		linkFunction("getExperiments", experimentManager.getExperiments);
-
+		
+		// TODO: Temporary fix, final fix will be to create a single manager that uses UUID namespaces
+		socket.on("getDevicesAndExperiments", (res) => {
+			let obj = {devices: deviceManager.getDevices(), experiments: experimentManager.getExperiments()};
+			if(res && typeof res === "function") res(obj);
+			else socket.emit("getDevicesAndExperiments", obj);
+		});
+		
 		socket.on('disconnect', function() {
 			for(const device of deviceManager.getDevices())
 				if(device.listeners[socket.id])

@@ -4,16 +4,28 @@ let screenDivVisible = false;
 let menu = {"root": {children: [], anchor: document.getElementById("sideMenu")}};
 let currentEditor;
 
+const colSizesSpec = {
+	"small": {pix: 150, per: 10},
+	"medium": {pix: 200, per: 15},
+	"uuid": {pix: 270, per: 20}
+};
+
+let colSizes = {};
+
 addMenuItem("Overview", "/");
 addMenuItem("Devices", "/devices");
 addMenuItem("Experiments", "/experiments");
 addMenuItem("Settings", "/settings");
-socket.emit("getDevices");
+
+window.onresize = () => {_processTableColumnSizes()};
+
 let _domReady = false; // Fix menu being generated before DOM
 window.onload = () => {_domReady = true};
-socket.on("getDevices", (data) => {
-	for(const device of data)
+socket.emit("getDevicesAndExperiments", (data) => {
+	for(const device of data.devices)
 		addMenuItem(device.name, device.link, "/devices", device.formattedDevice);
+	for(const experiment of data.experiments)
+		addMenuItem(experiment.name, experiment.link, "/experiments");
 	if(_domReady)
 		generateMenu(window.location.pathname);
 	else
@@ -106,6 +118,25 @@ function closeWindow(obj){
 function toggleScreenDiv(enable){
 	screenDivVisible = enable;
 	screenDiv.setAttribute("style", "opacity: " + (enable ? "100%" : 0) + "; " + (enable ? "z-index: 2" : ""));
+}
+
+function processCustomAttributes(){
+	_processTableColumnSizes();
+}
+
+function _processTableColumnSizes(){
+	Object.entries(colSizesSpec).forEach(([sz, spec]) => {
+		let perSz = spec.per/100*window.innerWidth;
+		colSizes[sz] = perSz < spec.pix ? perSz : spec.pix;
+	});
+	
+	for(let th of document.getElementsByTagName("th")) _setColumnSize(th);
+	for(let td of document.getElementsByTagName("td")) _setColumnSize(td);
+}
+
+function _setColumnSize(element){
+	let width = colSizes[element.getAttribute("col-size")];
+	if(width !== undefined) element.style.width = width + "px";
 }
 
 function createForm(template, submitText, onSubmit){

@@ -165,6 +165,49 @@ ul
 				display: block
 				text-align: left
 
+table
+	background-color: rgba($background-dark, 0.2)
+	border-collapse: collapse
+	table-layout: fixed
+	width: 100%
+	thead
+		background: $background-dark
+		tr
+			display: block
+			th
+				font-weight: normal
+	tbody
+		display: block
+		width: 100%
+		overflow: auto
+		height: 250px
+	th, td
+		padding: 10px
+		text-align: left
+
+.col-size-small
+	width: 7%
+	max-width: 150px
+.col-size-medium
+	width: 10%
+	max-width: 250px
+.col-size-uuid
+	width: 12%
+	max-width: 270px
+
+/*table.ls-ss-id
+	th:nth-child(1), td:nth-child(1)
+		width: 250px
+	th:nth-child(2), td:nth-child(2)
+		width: 150px
+	th:nth-child(3), td:nth-child(3)
+		width: 270px*/
+
+.tableContainer
+	overflow: auto
+	height: 250px
+	border: 1px $background-dark solid
+
 .screenDivContainer
 	@include center
 	box-shadow: 0 0 17px -1px rgba($background-black, 0.75)
@@ -200,6 +243,9 @@ ul
 .pageTitle
 	font-size: xx-large
 
+.pageSubtitle
+	font-size: x-large
+
 .devicesGroupContainer
 	display: flex
 	align-content: space-evenly
@@ -230,8 +276,12 @@ ul
 .mainView
 	flex: 1 1 auto
 	display: flex
-	align-items: center
-	justify-content: center
+	flex-direction: column
+	align-items: flex-start
+	justify-content: left
+	padding: 0 16px 0 16px
+	span
+		font-size: x-large
 
 .graphHolder
 	width: 95%
