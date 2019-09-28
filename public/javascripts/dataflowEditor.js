@@ -84,17 +84,25 @@ class Dataflow {
 	
 	get fileStructure(){
 		let struct = {nodes: [], connections: []};
-		this._iterateNodes(node => struct.nodes.push([node.nodePath, node.position, node.properties]));
-		for(let n = 0; n < struct.nodes.length; n++){
-			let fromNode = struct.nodes[n];
-			for(let x = 0; x < fromNode.connections.length; x++)
-				for(let c = 0; c < fromNode.connections[x].connections.length; c++){
-					let con = fromNode.connections[x].connections[c];
-					for(let t = 0; t < struct.nodes.length; t++)
-						if(struct.nodes[t] === con.node)
+		this._iterateNodes(node => {
+			struct.nodes.push([node.nodePath, node.position, node.properties]);
+		});
+		let n = 0;
+		this._iterateNodes(node => {
+			for(let x = 0; x < node.connections.length; x++)
+				for(let c = 0; c < node.connections[x].connections.length; c++){
+					let con = node.connections[x].connections[c];
+					let t = 0;
+					this._iterateNodes(toNode => {
+						if(toNode === con.node){
 							struct.connections.push([n, x, t, con.index]);
+							return true;
+						}
+						t++;
+					});
 				}
-		}
+			n++;
+		});
 		return struct;
 	}
 	
@@ -301,7 +309,8 @@ class DataflowEditor{
 		// if(!node.innerWidth)
 		// 	node.innerWidth = node.size.width-2*DataflowEditor.slotCircleArea-2*DataflowEditor.slotLabelArea-2*DataflowEditor.titleSlotLabelAreaSpacing;
 		this.dataflow._ensureTreeLevel(node.deepness);
-		this.dataflow.structure.flowTree[node.deepness].push(node);
+		this.dataflow.struct.flowTree[node.deepness].push(node);
+		this.dataflow._evaluateDeepness(node);
 		return true;
 	}
 	

@@ -1,16 +1,7 @@
 {% extends 'layout.twig' %}
 
 {% block screen %}
-<div id="editorContainer" style="display: none">
-	<ul class="topnav" id="editorMenu">
-		<li class="dropdown" id="editorMenu-addNode">
-			<a>Add Node</a>
-			<div id="editorMenu-addNode-content"></div>
-		</li>
-		<li style="margin-left: auto" id="editorMenu-close" class="clickable"><a>Close</a></li>
-	</ul>
-	<canvas style="display: block" id="editorCanvas"></canvas>
-</div>
+{% embed "templates/dataflowEditorContainer.twig" %}{% endembed %}
 {% endblock %}
 
 {% block body %}
@@ -42,44 +33,11 @@
 {% block scripts %}
 	<script type="text/javascript" src="/javascripts/dataflowEditor.js"></script>
 	<script type="text/javascript">
-		let registeredNodes = {{ registeredNodes|json_encode|raw }};
 		let experiments = {{ experiments|json_encode|raw }};
+		loadDataflowMenuNodes({{ registeredNodes|json_encode|raw }});
 		
 		let root = document.getElementById("experimentsGroupContainer");
-		for(const cat of Object.keys(registeredNodes)) {
-			for(const t of Object.keys(registeredNodes[cat].nodes)) {
-				let node = registeredNodes[cat].nodes[t];
-				if (!document.getElementById("editorMenu-addNode-content-" + cat)) {
-					let li = document.createElement("li");
-					li.id = "editorMenu-addNode-content-" + cat;
-					let catLink = document.createElement("a");
-					catLink.appendChild(document.createTextNode(node.category));
-					li.appendChild(catLink);
-					let ul = document.createElement("ul");
-					ul.id = li.id + "-content";
-					li.appendChild(ul);
-					document.getElementById("editorMenu-addNode-content").appendChild(li);
-				}
-				let li = document.createElement("li");
-				li.id = "nodeItem-" + cat + "-" + t;
-				let nodeLink = document.createElement("a");
-				let openPar = node.title.indexOf("("), closePar = node.title.indexOf(")");
-				if(openPar >= 0 && closePar > 1 && openPar < closePar + 1 && !(closePar + 1 < node.title.length && openPar === 0)) {
-					let extraInfoSpan = document.createElement("span");
-					extraInfoSpan.classList.add("subtitle", "inline");
-					nodeLink.appendChild(document.createTextNode(node.title.substring(0, openPar)));
-					extraInfoSpan.appendChild(document.createTextNode(" " + node.title.substring(openPar, closePar + 1)));
-					nodeLink.appendChild(extraInfoSpan);
-				} else
-					nodeLink.appendChild(document.createTextNode(node.title));
-				nodeLink.onclick = () => {
-					if(currentEditor) currentEditor.addNode(cat + "/" + t);
-				};
-				li.appendChild(nodeLink);
-				document.getElementById("editorMenu-addNode-content-" + cat + "-content").appendChild(li);
-				Dataflow.registerNode(node.title, node.category, node.inputLabels, node.outputLabels);
-			}
-		}
+		
 		const baseForm = {
 			"name": {"type": "textbox", "isTitled": true}
 		};

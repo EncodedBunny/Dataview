@@ -101,7 +101,7 @@ function closeEditor(){
 
 		document.getElementById("editorContainer").setAttribute("style","display: none");
 		
-		let res = currentEditor.dataflow.structure;
+		let res = currentEditor.dataflow.fileStructure;
 		currentEditor.close();
 		currentEditor = undefined;
 
@@ -121,6 +121,46 @@ function closeWindow(obj){
 function toggleScreenDiv(enable){
 	screenDivVisible = enable;
 	screenDiv.setAttribute("style", "opacity: " + (enable ? "100%" : 0) + "; " + (enable ? "z-index: 2" : ""));
+}
+
+/**
+*	TODO: Temp solution, verify if DataflowEditor container is available
+*/
+function loadDataflowMenuNodes(registeredNodes){
+	for(const cat of Object.keys(registeredNodes)) {
+		for(const t of Object.keys(registeredNodes[cat].nodes)) {
+			let node = registeredNodes[cat].nodes[t];
+			if (!document.getElementById("editorMenu-addNode-content-" + cat)) {
+				let li = document.createElement("li");
+				li.id = "editorMenu-addNode-content-" + cat;
+				let catLink = document.createElement("a");
+				catLink.appendChild(document.createTextNode(node.category));
+				li.appendChild(catLink);
+				let ul = document.createElement("ul");
+				ul.id = li.id + "-content";
+				li.appendChild(ul);
+				document.getElementById("editorMenu-addNode-content").appendChild(li);
+			}
+			let li = document.createElement("li");
+			li.id = "nodeItem-" + cat + "-" + t;
+			let nodeLink = document.createElement("a");
+			let openPar = node.title.indexOf("("), closePar = node.title.indexOf(")");
+			if(openPar >= 0 && closePar > 1 && openPar < closePar + 1 && !(closePar + 1 < node.title.length && openPar === 0)) {
+				let extraInfoSpan = document.createElement("span");
+				extraInfoSpan.classList.add("subtitle", "inline");
+				nodeLink.appendChild(document.createTextNode(node.title.substring(0, openPar)));
+				extraInfoSpan.appendChild(document.createTextNode(" " + node.title.substring(openPar, closePar + 1)));
+				nodeLink.appendChild(extraInfoSpan);
+			} else
+				nodeLink.appendChild(document.createTextNode(node.title));
+			nodeLink.onclick = () => {
+				if(currentEditor) currentEditor.addNode(cat + "/" + t);
+			};
+			li.appendChild(nodeLink);
+			document.getElementById("editorMenu-addNode-content-" + cat + "-content").appendChild(li);
+			Dataflow.registerNode(node.title, node.category, node.inputLabels, node.outputLabels);
+		}
+	}
 }
 
 function processCustomAttributes(){

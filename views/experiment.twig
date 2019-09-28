@@ -1,17 +1,7 @@
 {% extends 'layout.twig' %}
 
 {% block screen %}
-	<!-- TODO: Create template for editor container div -->
-	<div id="editorContainer" style="display: none">
-		<ul class="topnav" id="editorMenu">
-			<li class="dropdown" id="editorMenu-addNode">
-				<a>Add Node</a>
-				<div id="editorMenu-addNode-content"></div>
-			</li>
-			<li style="margin-left: auto" id="editorMenu-close" class="clickable"><a>Close</a></li>
-		</ul>
-		<canvas style="display: block" id="editorCanvas"></canvas>
-	</div>
+{% embed "templates/dataflowEditorContainer.twig" %}{% endembed %}
 {% endblock %}
 
 {% block body %}
@@ -30,13 +20,13 @@
 		</tbody>
 	</table>
 	<h2 class="pageSubtitle">Graphs</h2>
-	
 {% endblock %}
 
 {% block scripts %}
 	<script type="text/javascript" src="/javascripts/dataflowEditor.js"></script>
 	<script type="text/javascript">
 		let experiment = {{ experiment|json_encode|raw }};
+		loadDataflowMenuNodes({{ registeredNodes|json_encode|raw }});
 		let dtf = new Dataflow(experiment.fileStructure);
 		Waves.init();
 		
@@ -69,7 +59,7 @@
 		
 		function displayDataflowEditor(){
 			displayEditor(dtf, (struct) => {
-				console.log(struct);
+				socket.emit("dataflowUpdate", struct); // TODO: Check for success before closing the dataflow editor
 			});
 		}
 	</script>
