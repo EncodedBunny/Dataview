@@ -12,12 +12,12 @@
 		<form method="post" action="/" id="loginForm" name="loginForm">
 			<div>
 				<span>Username</span>
-				<input type="text" id="user" name="user"></input>
+				<input type="text" id="user" name="user"/>
 			</div>
 			<br>
 			<div>
 				<span>Password</span>
-				<input type="password" id="password" name="password"></input>
+				<input type="password" id="password" name="password"/>
 			</div>
 			<br>
 			<footer>
@@ -48,7 +48,6 @@
 			}).then(function (webKey) {
 				return crypto.subtle.exportKey("raw", webKey);
 			}).then(function (buffer) {
-				let decoder = new TextDecoder("utf-8");
 				document.getElementById("password").value = new Uint8Array(buffer).reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '');
 				document.loginForm.submit();
 			});

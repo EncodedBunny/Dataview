@@ -98,7 +98,7 @@ class Experiment{
 	}
 	
 	getWebInfo(){
-		return {name: this.name, dataflow: this.dataflow, link: this.link, sensors: this.sensors, graphs: this.graphs};
+		return {name: this.name, dataflow: this.dataflow.webStructure, link: this.link, sensors: this.sensors, graphs: this.graphs};
 	}
 }
 

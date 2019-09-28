@@ -130,6 +130,23 @@ class Dataflow {
 		return this.structure;
 	}
 	
+	get webStructure(){
+		this.structure.nodes = [];
+		this.structure.connections = [];
+		this._iterateNodes(node => this.structure.nodes.push({path: node.path, position: node.position, properties: node.properties}));
+		for(let n = 0; n < this.structure.nodes.length; n++){
+			let fromNode = this.structure.nodes[n];
+			for(let x = 0; x < fromNode.connections.length; x++)
+				for(let c = 0; c < fromNode.connections[x].connections.length; c++){
+					let con = fromNode.connections[x].connections[c];
+					for(let t = 0; t < this.structure.nodes.length; t++)
+						if(this.structure.nodes[t] === con.node)
+							this.structure.connections.push([n, x, t, con.index]);
+				}
+		}
+		return this.structure;
+	}
+	
 	_evaluateDeepness(node){
 		if(this._insideTree(node)){
 			let level = 0;

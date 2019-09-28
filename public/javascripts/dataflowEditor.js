@@ -82,8 +82,20 @@ class Dataflow {
 		if(!this.struct.flowTree[level]) this.struct.flowTree[level] = [];
 	}
 	
-	get structure(){
-		return this.struct;
+	get fileStructure(){
+		let struct = {nodes: [], connections: []};
+		this._iterateNodes(node => struct.nodes.push([node.nodePath, node.position, node.properties]));
+		for(let n = 0; n < struct.nodes.length; n++){
+			let fromNode = struct.nodes[n];
+			for(let x = 0; x < fromNode.connections.length; x++)
+				for(let c = 0; c < fromNode.connections[x].connections.length; c++){
+					let con = fromNode.connections[x].connections[c];
+					for(let t = 0; t < struct.nodes.length; t++)
+						if(struct.nodes[t] === con.node)
+							struct.connections.push([n, x, t, con.index]);
+				}
+		}
+		return struct;
 	}
 	
 	// TODO: Add support for undefined number of inputs
@@ -129,7 +141,7 @@ class DataflowEditor{
 		this.run = true;
 		
 		this.canvasCtx = this.canvas.getContext("2d");
-		let transform = this.dataflow.structure.transform;
+		let transform = this.dataflow.struct.transform;
 		this.canvasCtx.setTransform(transform.a, transform.b, transform.c, transform.d, transform.e, transform.f);
 		this.canvasCtx.transformedPoint = (x, y) => {
 			let point = new DOMPointReadOnly(x, y);
@@ -575,5 +587,3 @@ class Node {
 		return Node._checkIndex(index, maxIndex) && slot;
 	}
 }
-
-let dataflow = new Dataflow();

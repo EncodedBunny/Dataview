@@ -1,35 +1,43 @@
 {% extends 'layout.twig' %}
 
+{% block screen %}
+	<!-- TODO: Create template for editor container div -->
+	<div id="editorContainer" style="display: none">
+		<ul class="topnav" id="editorMenu">
+			<li class="dropdown" id="editorMenu-addNode">
+				<a>Add Node</a>
+				<div id="editorMenu-addNode-content"></div>
+			</li>
+			<li style="margin-left: auto" id="editorMenu-close" class="clickable"><a>Close</a></li>
+		</ul>
+		<canvas style="display: block" id="editorCanvas"></canvas>
+	</div>
+{% endblock %}
+
 {% block body %}
 	<h1 class="pageTitle">Experiment "{{ experiment.name }}"</h1>
-	<button class="waves-button waves-float waves-ripple">Edit Dataflow</button>
+	<button class="waves-button waves-float waves-ripple" onclick="displayDataflowEditor()">Edit Dataflow</button>
 	<h2 class="pageSubtitle">Sensors</h2>
-		<table class="ls-ss-id">
-			<thead>
-				<tr>
-					<th col-size="medium">Name</th>
-					<th col-size="medium">Device</th>
-					<th col-size="uuid">ID</th>
-				</tr>
-			</thead>
-			<tbody id="tableBody">
-			</tbody>
-		</table>
-	<div class="devicesGroupContainer" id="sensorsGroupContainer">
-		<div class="container placeholder" style="width: 300px; height: 300px;">
-			<div class="plusCircleButton" id="addExperiment">
-				<span class="plusCircleText">+</span>
-			</div>
-		</div>
-	</div>
+	<table>
+		<thead>
+			<tr>
+				<th col-size="medium">Name</th>
+				<th col-size="medium">Device</th>
+				<th col-size="uuid">ID</th>
+			</tr>
+		</thead>
+		<tbody id="tableBody">
+		</tbody>
+	</table>
 	<h2 class="pageSubtitle">Graphs</h2>
+	
 {% endblock %}
 
 {% block scripts %}
+	<script type="text/javascript" src="/javascripts/dataflowEditor.js"></script>
 	<script type="text/javascript">
-		let root = document.getElementById("sensorsGroupContainer");
-		root.appendChild(createPlaceholderContainer(600, 400, "addSensor"));
 		let experiment = {{ experiment|json_encode|raw }};
+		let dtf = new Dataflow(experiment.fileStructure);
 		Waves.init();
 		
 		let tBody = document.getElementById("tableBody");
@@ -56,6 +64,12 @@
 				let r = (dt + Math.random()*16)%16 | 0;
 				dt = Math.floor(dt/16);
 				return (c === 'x' ? r :(r&0x3|0x8)).toString(16);
+			});
+		}
+		
+		function displayDataflowEditor(){
+			displayEditor(dtf, (struct) => {
+				console.log(struct);
 			});
 		}
 	</script>

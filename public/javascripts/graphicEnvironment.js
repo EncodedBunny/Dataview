@@ -70,22 +70,22 @@ function displayWindow(title, width, content){
 	return window;
 }
 
-function displayEditor(){
+function displayEditor(dataflow, onEdited){
 	if(!currentEditor) {
 		document.getElementById("editorContainer").setAttribute("style","display: block");
-
+		
 		let canvas = document.getElementById("editorCanvas");
 		canvas.width = Math.ceil(screenDiv.offsetWidth * 0.9);
 		canvas.height = Math.ceil(screenDiv.offsetHeight * 0.9);
-
+		
 		let topMenu = document.getElementById("editorMenu");
 		topMenu.setAttribute("style", "width: " + canvas.width + "px");
-
+		
 		let close = document.getElementById("editorMenu-close");
 		close.onclick = () => {
-			closeEditor();
+			onEdited(closeEditor());
 		};
-
+		
 		toggleScreenDiv(true);
 		currentEditor = new DataflowEditor(dataflow, canvas);
 	} else
@@ -100,12 +100,15 @@ function closeEditor(){
 		topMenu.setAttribute("style", "");
 
 		document.getElementById("editorContainer").setAttribute("style","display: none");
-
+		
+		let res = currentEditor.dataflow.structure;
 		currentEditor.close();
 		currentEditor = undefined;
 
 		toggleScreenDiv(false);
+		return res;
 	}
+	return undefined;
 }
 
 function closeWindow(obj){
