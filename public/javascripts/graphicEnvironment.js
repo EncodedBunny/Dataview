@@ -7,7 +7,7 @@ let currentEditor;
 const colSizesSpec = {
 	"small": {pix: 150, per: 10},
 	"medium": {pix: 200, per: 15},
-	"uuid": {pix: 270, per: 20}
+	"uuid": {pix: 280, per: 20}
 };
 
 let colSizes = {};
@@ -24,8 +24,8 @@ window.onload = () => {_domReady = true};
 socket.emit("getDevicesAndExperiments", (data) => {
 	for(const device of data.devices)
 		addMenuItem(device.name, device.link, "/devices", device.formattedDevice);
-	for(const experiment of data.experiments)
-		addMenuItem(experiment.name, experiment.link, "/experiments");
+	for(const expData of data.experiments)
+		addMenuItem(expData.experiment.name, expData.id, "/experiments");
 	if(_domReady)
 		generateMenu(window.location.pathname);
 	else
@@ -70,7 +70,7 @@ function displayWindow(title, width, content){
 	return window;
 }
 
-function displayEditor(dataflow, onEdited){
+function displayEditor(dataflow, onClose){
 	if(!currentEditor) {
 		document.getElementById("editorContainer").setAttribute("style","display: block");
 		
@@ -83,7 +83,8 @@ function displayEditor(dataflow, onEdited){
 		
 		let close = document.getElementById("editorMenu-close");
 		close.onclick = () => {
-			onEdited(closeEditor());
+			if(typeof onClose === "function") onClose();
+			else closeEditor();
 		};
 		
 		toggleScreenDiv(true);
@@ -101,14 +102,11 @@ function closeEditor(){
 
 		document.getElementById("editorContainer").setAttribute("style","display: none");
 		
-		let res = currentEditor.dataflow.fileStructure;
 		currentEditor.close();
 		currentEditor = undefined;
 
 		toggleScreenDiv(false);
-		return res;
 	}
-	return undefined;
 }
 
 function closeWindow(obj){

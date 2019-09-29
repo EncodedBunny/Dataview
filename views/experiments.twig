@@ -44,10 +44,9 @@
 		Waves.init();
 		document.getElementById("addExperiment").addEventListener("click", () => {
 			let newSensorWindow = displayWindow("Add New Experiment", 450, createForm(baseForm, "add", (data) => {
-				let link = cleanString(data.name);
-				socket.emit("addExperiment", {name: data.name, link: link}, (status) => {
-					if(status)
-						enterSublink(link);
+				socket.emit("addExperiment", {name: data.name}, (uuid) => {
+					if(uuid !== undefined)
+						enterSublink(uuid);
 					else
 						alert("An error occurred");
 					closeWindow(newSensorWindow);

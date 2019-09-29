@@ -5,12 +5,13 @@ module.exports = function(deviceManager) {
 	let module = {};
 	let experiments = {};
 
-	module.addExperiment = function(name, link){
-		if(!experiments[link]){
-			experiments[link] = new Experiment(name, link);
-			return true;
-		}
-		return false;
+	module.addExperiment = function(name){
+		let id;
+		do{
+			id = uuid();
+		} while(experiments[id] !== undefined);
+		experiments[id] = new Experiment(name);
+		return id;
 	};
 
 	module.addSensorToExperiment = function(experiment, device, sensorId){
@@ -21,25 +22,29 @@ module.exports = function(deviceManager) {
 		return false;
 	};
 	
-	module.getExperiment = function(link){
-		return experiments[link];
+	module.getExperiment = function(id){
+		return experiments[id];
 	};
-
+	
 	module.getExperiments = function(){
 		let res = [];
-		for(experiment of Object.values(experiments))
-			res.push(experiment.getWebInfo());
-		console.log(res);
+		for(const id of Object.keys(experiments))
+			res.push({id: id, experiment: experiments[id].getWebInfo()});
 		return res;
+	};
+	
+	module.updateExperimentDataflow = function(id, dataflowStructure){
+		if(experiments[id])
+			return experiments[id].setDataflowStructure(dataflowStructure);
+		return false;
 	};
 
 	return module;
 };
 
 class Experiment{
-	constructor(name, link, dataflowStructure) {
+	constructor(name, dataflowStructure) {
 		this._name = name;
-		this._link = link;
 		this._sensors = [];
 		this._dataflow = new Dataflow(dataflowStructure);
 		this._graphs = [];
@@ -85,10 +90,6 @@ class Experiment{
 		return this._name;
 	}
 	
-	get link(){
-		return this._link;
-	}
-	
 	get sensors(){
 		return this._sensors;
 	}
@@ -98,7 +99,7 @@ class Experiment{
 	}
 	
 	getWebInfo(){
-		return {name: this.name, dataflow: this.dataflow.webStructure, link: this.link, sensors: this.sensors, graphs: this.graphs};
+		return {name: this.name, dataflow: this.dataflow.webStructure, sensors: this.sensors, graphs: this.graphs};
 	}
 }
 

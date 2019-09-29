@@ -37,10 +37,10 @@ class Dataflow {
 			this.loadFileStructure(fileStructure);
 	}
 	
-	connect(fromNode, fromIndex, toNode, toIndex){
+	connect(fromNode, fromIndex, toNode, toIndex, dontEvaluate){
 		if(this._insideTree(fromNode) && this._insideTree(toNode)){
 			let success = fromNode.connectOutput(fromIndex, toNode, toIndex);
-			if(success) this._evaluateDeepness(toNode);
+			if(success && dontEvaluate === undefined) this._evaluateDeepness(toNode);
 			return success;
 		}
 		return false;
@@ -52,6 +52,7 @@ class Dataflow {
 	}
 	
 	loadFileStructure(fileStructure){
+		this.flowTree = [];
 		let indexConversion = [];
 		
 		for(const index in fileStructure.nodes){
@@ -72,14 +73,18 @@ class Dataflow {
 					if(!Number.isInteger(index) || index < 0) continue metaConnectionLoop;
 				let originNodeLoc = indexConversion[metaConnection[DF_FILE_CON_FROM_NODE]],
 					destNodeLoc = indexConversion[metaConnection[DF_FILE_CON_TO_NODE]];
-				if(!originNodeLoc || !destNodeLoc || !this.flowTree[originNodeLoc.level] || !this.flowTree[destNodeLoc.level]) continue;
+				if(originNodeLoc === undefined || destNodeLoc === undefined || !this.flowTree[originNodeLoc.level] || !this.flowTree[destNodeLoc.level]) continue;
 				let originNode = this.flowTree[originNodeLoc.level][originNodeLoc.index],
 					originSlot = metaConnection[DF_FILE_CON_FROM_SLOT],
 					destNode = this.flowTree[destNodeLoc.level][destNodeLoc.index],
 					destSlot = metaConnection[DF_FILE_CON_TO_SLOT];
 				if(originSlot >= originNode.outputNumber || destSlot >= destNode.inputNumber) continue;
-				this.connect(originNode, originSlot, destNode, destSlot);
+				this.connect(originNode, originSlot, destNode, destSlot, true);
 			}
+		
+		this._iterateNodes(node => {
+			this._evaluateDeepness(node);
+		});
 		
 		this.structure.transform = fileStructure.transform;
 	}
@@ -133,17 +138,25 @@ class Dataflow {
 	get webStructure(){
 		this.structure.nodes = [];
 		this.structure.connections = [];
-		this._iterateNodes(node => this.structure.nodes.push({path: node.path, position: node.position, properties: node.properties}));
-		for(let n = 0; n < this.structure.nodes.length; n++){
-			let fromNode = this.structure.nodes[n];
+		this._iterateNodes(node => {
+			this.structure.nodes.push({path: node.path, position: node.position, properties: node.properties})
+		});
+		let n = 0;
+		this._iterateNodes(fromNode => {
 			for(let x = 0; x < fromNode.connections.length; x++)
 				for(let c = 0; c < fromNode.connections[x].connections.length; c++){
 					let con = fromNode.connections[x].connections[c];
-					for(let t = 0; t < this.structure.nodes.length; t++)
-						if(this.structure.nodes[t] === con.node)
-							this.structure.connections.push([n, x, t, con.index]);
+					let t = 0;
+					this._iterateNodes(toNode => {
+						if(toNode === con.node) {
+							this.structure.connections.push({fromNode: n, fromSlot: x, toNode: t, toSlot: con.index});
+							return true;
+						}
+						t++;
+					});
 				}
-		}
+			n++;
+		});
 		return this.structure;
 	}
 	
@@ -153,8 +166,7 @@ class Dataflow {
 			for(const connection of Object.values(node.inputConnections))
 				if(connection.owner.deepness+1 > level)
 					level = connection.owner.deepness+1;
-			if(node.deepness !== level)
-				return this._moveInTree(node, level);
+			return this._moveInTree(node, level);
 		}
 		return undefined;
 	}
@@ -337,7 +349,7 @@ class Node {
 	}
 	
 	get position(){
-		return [this.x, this.y];
+		return {x: this.x, y: this.y};
 	}
 	
 	get inputConnections(){
@@ -381,7 +393,7 @@ class Node {
 	}
 	
 	static _checkConnection(index, maxIndex, slot) {
-		return Node._checkIndex(index, maxIndex) && slot;
+		return Node._checkIndex(index, maxIndex) && slot !== undefined;
 	}
 }
 

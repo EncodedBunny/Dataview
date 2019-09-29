@@ -1,109 +1,43 @@
 class Dataflow {
 	constructor(structure){
-		this.struct = structure || {flowTree: [], transform: new DOMMatrix([1, 0, 0, 1, 0, 0])};
+		this.struct = {nodes: [], transform: [1, 0, 0, 1, 0, 0]};
 		
-		for(let l = 0; l < this.struct.flowTree.length; l++){
-			for(let n = 0; n < this.struct.flowTree[l].length; n++){
-				let nodeSpec = this.struct.flowTree[l][n];
-				let node = Dataflow.createNode(nodeSpec.path, nodeSpec.x, nodeSpec.y);
-				if(node)
-					this.struct.flowTree[l][n] = node;
-				else throw "Invalid structure object";
+		if(structure){
+			let indexConversion = [];
+			
+			for(const index in structure.nodes){
+				let metaNode = structure.nodes[index];
+				let node = Dataflow.createNode(metaNode.path, metaNode.position.x, metaNode.position.y);
+				if(!node) continue;
+				this.struct.nodes.push(node);
+				indexConversion[index] = this.struct.nodes.length-1;
 			}
+			
+			for(const metaConnection of structure.connections){
+				let originNodeLoc = indexConversion[metaConnection.fromNode],
+					destNodeLoc = indexConversion[metaConnection.toNode];
+				if(originNodeLoc === undefined || destNodeLoc === undefined) continue;
+				let originNode = this.struct.nodes[originNodeLoc],
+					destNode = this.struct.nodes[destNodeLoc];
+				if(metaConnection.fromSlot >= originNode.numberOfOutputs || metaConnection.toSlot >= destNode.numberOfInputs) continue;
+				this.connect(originNode, metaConnection.fromSlot, destNode, metaConnection.toSlot);
+			}
+			
+			this.struct.transform = structure.transform;
 		}
-		
-		// TODO: Generate flow tree from structure object/string
 	}
 	
 	connect(fromNode, fromIndex, toNode, toIndex){
-		if(this._insideTree(fromNode) && this._insideTree(toNode)){
-			let success = fromNode.connectOutput(fromIndex, toNode, toIndex);
-			if(success) this._evaluateDeepness(toNode);
-			return success;
-		}
+		if(this.struct.nodes.includes(fromNode) && this.struct.nodes.includes(toNode))
+			return fromNode.connectOutput(fromIndex, toNode, toIndex);
 		return false;
 	}
 	
 	getNodesByPath(path){
 		let result = [];
-		this._iterateNodes(node => {
+		for(let node of this.struct.nodes)
 			if(node.nodePath === path) result.push(node);
-		});
 		return result;
-	}
-	
-	_evaluateDeepness(node){
-		if(this._insideTree(node)){
-			let level = 0;
-			for(const connection of Object.values(node.inputConnections))
-				if(connection.owner.deepness+1 > level)
-					level = connection.owner.deepness+1;
-			if(node.deepness !== level)
-				return this._moveInTree(node, level);
-		}
-		return false;
-	}
-	
-	_moveInTree(node, level){
-		for(let i = 0; i < this.struct.flowTree[node.deepness].length; i++)
-			if(this.struct.flowTree[node.deepness][i] === node){
-				let n = this.struct.flowTree[node.deepness][i];
-				this.struct.flowTree[node.deepness].splice(i, 1);
-				this._ensureTreeLevel(level);
-				n.deepness = level;
-				this.struct.flowTree[level].push(n);
-				return true;
-			}
-		return false;
-	}
-	
-	_insideTree(node){
-		return this._iterateNodes(n => n === node);
-	}
-	
-	_iterateNodes(callback, reverse){
-		if(reverse) {
-			for (let i = this.struct.flowTree.length - 1; i >= 0; i--)
-				if(this.struct.flowTree[i])
-					for(let n = this.struct.flowTree[i].length-1; n >= 0; n--)
-						if(callback(this.struct.flowTree[i][n]))
-							return true;
-		}else {
-			for (const level of this.struct.flowTree)
-				if(level)
-					for(const n of level)
-						if(callback(n))
-							return true;
-		}
-		return false;
-	}
-	
-	_ensureTreeLevel(level){
-		if(!this.struct.flowTree[level]) this.struct.flowTree[level] = [];
-	}
-	
-	get fileStructure(){
-		let struct = {nodes: [], connections: []};
-		this._iterateNodes(node => {
-			struct.nodes.push([node.nodePath, node.position, node.properties]);
-		});
-		let n = 0;
-		this._iterateNodes(node => {
-			for(let x = 0; x < node.connections.length; x++)
-				for(let c = 0; c < node.connections[x].connections.length; c++){
-					let con = node.connections[x].connections[c];
-					let t = 0;
-					this._iterateNodes(toNode => {
-						if(toNode === con.node){
-							struct.connections.push([n, x, t, con.index]);
-							return true;
-						}
-						t++;
-					});
-				}
-			n++;
-		});
-		return struct;
 	}
 	
 	// TODO: Add support for undefined number of inputs
@@ -149,8 +83,8 @@ class DataflowEditor{
 		this.run = true;
 		
 		this.canvasCtx = this.canvas.getContext("2d");
-		let transform = this.dataflow.struct.transform;
-		this.canvasCtx.setTransform(transform.a, transform.b, transform.c, transform.d, transform.e, transform.f);
+		this.transform = new DOMMatrix(this.dataflow.struct.transform);
+		this.canvasCtx.setTransform(this.transform.a, this.transform.b, this.transform.c, this.transform.d, this.transform.e, this.transform.f);
 		this.canvasCtx.transformedPoint = (x, y) => {
 			let point = new DOMPointReadOnly(x, y);
 			return point.matrixTransform(this.canvasCtx.getTransform().invertSelf());
@@ -215,7 +149,7 @@ class DataflowEditor{
 			dragTarget = undefined;
 			
 			let transformedPoint = this.canvasCtx.transformedPoint(mouseX, mouseY);
-			this.dataflow._iterateNodes(node => {
+			for(let node of this.dataflow.struct.nodes){
 				if(pointInsideArea(transformedPoint, node.position, node.size)){
 					let hitSlot = false;
 					if(!pointInsideArea(transformedPoint,{x: node.position.x+DataflowEditor.slotCircleArea, y: node.position.y},{width: node.innerWidth, height: node.size.height})){
@@ -237,9 +171,9 @@ class DataflowEditor{
 						dragTarget = node;
 						dragAnchor.nodeAnchor = dragTarget.position;
 					}
-					return true;
+					break;
 				}
-			});
+			}
 		};
 		this.onMouseMove = (e) => {
 			updateMousePos(e);
@@ -248,7 +182,7 @@ class DataflowEditor{
 				let anchor = this.canvasCtx.transformedPoint(dragAnchor.x, dragAnchor.y);
 				if(dragTarget === undefined) {
 					let matrix = this.canvasCtx.getTransform();
-					this.canvasCtx.setTransform(matrix.a, matrix.b, matrix.c, matrix.d, dragAnchor.matrix.e + (point.x - anchor.x) * matrix.a, dragAnchor.matrix.f + (point.y - anchor.y) * matrix.d);
+					this.canvasCtx.setTransform(matrix.a, matrix.b, matrix.c, matrix.d,dragAnchor.matrix.e + (point.x - anchor.x) * matrix.a,dragAnchor.matrix.f + (point.y - anchor.y) * matrix.d);
 				} else if(dragTarget instanceof Node){
 					dragTarget.position = {x: dragAnchor.nodeAnchor.x+(point.x-anchor.x), y: dragAnchor.nodeAnchor.y+(point.y-anchor.y)};
 				} else if(typeof dragTarget.index === "number" && dragTarget.node instanceof Node){
@@ -261,16 +195,16 @@ class DataflowEditor{
 			updateMousePos(e);
 			if(dragTarget && typeof dragTarget.index === "number" && dragTarget.node instanceof Node) {
 				let transformedPoint = this.canvasCtx.transformedPoint(mouseX, mouseY);
-				this.dataflow._iterateNodes(node => {
+				for(let node of this.dataflow.struct.nodes){
 					if(pointInsideArea(transformedPoint, node.position, node.size)) {
 						if(dragTarget.node !== node)
 							if(!pointInsideArea(transformedPoint,{x: node.position.x + DataflowEditor.slotCircleArea, y: node.position.y},{width: node.innerWidth, height: node.size.height})) {
 								let slot = getHitSlot(node, node.inputNumber, node.position.x, transformedPoint);
 								if(slot !== undefined) this.dataflow.connect(dragTarget.node, dragTarget.index, node, slot.index);
 							}
-						return true;
+						break;
 					}
-				});
+				}
 			}
 			dragAnchor = undefined;
 			this.activeSlotLine = undefined;
@@ -308,9 +242,7 @@ class DataflowEditor{
 		node.position = {y: node.position.y-node.size.height/2};
 		// if(!node.innerWidth)
 		// 	node.innerWidth = node.size.width-2*DataflowEditor.slotCircleArea-2*DataflowEditor.slotLabelArea-2*DataflowEditor.titleSlotLabelAreaSpacing;
-		this.dataflow._ensureTreeLevel(node.deepness);
-		this.dataflow.struct.flowTree[node.deepness].push(node);
-		this.dataflow._evaluateDeepness(node);
+		this.dataflow.struct.nodes.push(node);
 		return true;
 	}
 	
@@ -328,6 +260,30 @@ class DataflowEditor{
 		this.canvas.removeEventListener("mousemove", this.onMouseMove);
 		this.canvas.removeEventListener("mouseup", this.onMouseUp);
 		this.canvas.removeEventListener('wheel', this.onMouseWheel);
+	}
+	
+	get fileStructure(){
+		let curTransform = this.canvasCtx.getTransform();
+		let struct = {nodes: [], connections: [], transform: [curTransform.a, curTransform.b, curTransform.c, curTransform.d, curTransform.e, curTransform.f]};
+		for(let node of this.dataflow.struct.nodes)
+			struct.nodes.push([node.nodePath, [node.position.x, node.position.y], node.properties]);
+		let n = 0;
+		for(let node of this.dataflow.struct.nodes) {
+			for (let x = 0; x < node.connections.length; x++)
+				for (let c = 0; c < node.connections[x].connections.length; c++) {
+					let con = node.connections[x].connections[c];
+					let t = 0;
+					for (let toNode of this.dataflow.struct.nodes) {
+						if (toNode === con.node) {
+							struct.connections.push([n, x, t, con.index]);
+							break;
+						}
+						t++;
+					}
+				}
+			n++;
+		}
+		return struct;
 	}
 	
 	_ensureScale(){
@@ -350,7 +306,7 @@ class DataflowEditor{
 		
 		// Render
 		// TODO: Invert rendering order
-		this.dataflow._iterateNodes(node => {
+		for(let node of this.dataflow.struct.nodes){
 			this.canvasCtx.save();
 			this.canvasCtx.strokeStyle = "#fafafa"; // TODO: Find better color
 			this.canvasCtx.lineCap = "round";
@@ -378,8 +334,9 @@ class DataflowEditor{
 					}
 				}
 			this.canvasCtx.restore();
-		});
-		this.dataflow._iterateNodes(node => {
+		}
+		for(let i = this.dataflow.struct.nodes.length-1; i >= 0; i--){
+			let node = this.dataflow.struct.nodes[i];
 			this.canvasCtx.fillStyle = "#404040";
 			this.canvasCtx.font = "24px Roboto";
 			let metrics = this.canvasCtx.measureText(node.title);
@@ -394,22 +351,22 @@ class DataflowEditor{
 			
 			this._displaySlots(node.numberOfInputs, node.inputLabels, node.position.x, node.position.y, node.size.height);
 			this._displaySlots(node.numberOfOutputs, node.outputLabels, node.position.x+node.size.width-DataflowEditor.slotCircleArea, node.position.y, node.size.height,true);
+		}
 		
-			if(this.activeSlotLine){
-				this.canvasCtx.save();
-				this.canvasCtx.lineWidth = 2*DataflowEditor.slotCircleRadius;
-				this.canvasCtx.strokeStyle = "rgba(48, 48, 48, 0.3)"; // TODO: Find better color
-				this.canvasCtx.beginPath();
-				this.canvasCtx.lineCap = "round";
-				this.canvasCtx.moveTo(this.activeSlotLine.start.x, this.activeSlotLine.start.y);
-				this.canvasCtx.lineTo(this.activeSlotLine.end.x, this.activeSlotLine.end.y);
-				this.canvasCtx.stroke();
-				this.canvasCtx.lineWidth = DataflowEditor.slotCircleRadius;
-				this.canvasCtx.strokeStyle = "#fafafa"; // TODO: Find better color
-				this.canvasCtx.stroke();
-				this.canvasCtx.restore();
-			}
-		},true);
+		if(this.activeSlotLine){
+			this.canvasCtx.save();
+			this.canvasCtx.lineWidth = 2*DataflowEditor.slotCircleRadius;
+			this.canvasCtx.strokeStyle = "rgba(48, 48, 48, 0.3)"; // TODO: Find better color
+			this.canvasCtx.beginPath();
+			this.canvasCtx.lineCap = "round";
+			this.canvasCtx.moveTo(this.activeSlotLine.start.x, this.activeSlotLine.start.y);
+			this.canvasCtx.lineTo(this.activeSlotLine.end.x, this.activeSlotLine.end.y);
+			this.canvasCtx.stroke();
+			this.canvasCtx.lineWidth = DataflowEditor.slotCircleRadius;
+			this.canvasCtx.strokeStyle = "#fafafa"; // TODO: Find better color
+			this.canvasCtx.stroke();
+			this.canvasCtx.restore();
+		}
 		
 		if(this.run) window.requestAnimationFrame(this.bindedRender);
 		else{
@@ -593,6 +550,6 @@ class Node {
 	}
 	
 	static _checkConnection(index, maxIndex, slot) {
-		return Node._checkIndex(index, maxIndex) && slot;
+		return Node._checkIndex(index, maxIndex) && slot !== undefined;
 	}
 }

@@ -27,7 +27,7 @@
 	<script type="text/javascript">
 		let experiment = {{ experiment|json_encode|raw }};
 		loadDataflowMenuNodes({{ registeredNodes|json_encode|raw }});
-		let dtf = new Dataflow(experiment.fileStructure);
+		let dtf = new Dataflow(experiment.dataflow);
 		Waves.init();
 		
 		let tBody = document.getElementById("tableBody");
@@ -42,7 +42,10 @@
 			dev.setAttribute("col-size", "medium");
 			tr.appendChild(dev);
 			let uuid = document.createElement("td");
-			uuid.appendChild(document.createTextNode(create_UUID()));
+			let uuidSpan = document.createElement("span");
+			uuidSpan.classList.add("highlightText");
+			uuidSpan.appendChild(document.createTextNode(create_UUID()));
+			uuid.appendChild(uuidSpan);
 			uuid.setAttribute("col-size", "uuid");
 			tr.appendChild(uuid);
 			tBody.appendChild(tr);
@@ -58,8 +61,11 @@
 		}
 		
 		function displayDataflowEditor(){
-			displayEditor(dtf, (struct) => {
-				socket.emit("dataflowUpdate", struct); // TODO: Check for success before closing the dataflow editor
+			displayEditor(dtf, () => {
+				socket.emit("updateExperimentDataflow", {id: "{{ experimentID }}", dataflowStructure: currentEditor.fileStructure}, (res) => {
+					if(res) closeEditor();
+					else alert("An error occurred while trying to save");
+				});
 			});
 		}
 	</script>
