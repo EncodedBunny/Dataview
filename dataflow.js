@@ -216,12 +216,12 @@ class Dataflow {
 	
 	// TODO: Add support for undefined number of inputs
 	// TODO: Add default properties
-	static registerNode(title, category, inputLabels, outputLabels, workerFunction){
+	static registerNode(title, category, inputLabels, outputLabels, workerFunction, defaultProperties){
 		let cat = Dataflow._cleanString(category);
 		let t = Dataflow._cleanString(title);
 		if(!Dataflow._registeredNodes.hasOwnProperty(cat)) Dataflow._registeredNodes[cat] = {name: category, nodes: {}};
 		if(!Dataflow._registeredNodes[cat].nodes.hasOwnProperty(t)){
-			Dataflow._registeredNodes[cat].nodes[t] = {title: title, category: category, inputLabels: inputLabels, outputLabels: outputLabels, workerFunction: workerFunction};
+			Dataflow._registeredNodes[cat].nodes[t] = {title: title, category: category, inputLabels: inputLabels, outputLabels: outputLabels, workerFunction: workerFunction, defaultProperties: defaultProperties || {}};
 			return cat + "/" + t;
 		}
 		return "";
@@ -242,7 +242,7 @@ class Dataflow {
 		let category = splitPath[0], nodeTitle = splitPath[1];
 		if(!Dataflow._registeredNodes.hasOwnProperty(category) || !Dataflow._registeredNodes[category].nodes.hasOwnProperty(nodeTitle)) return undefined;
 		let nodeSpec = Dataflow._registeredNodes[category].nodes[nodeTitle];
-		return new Node(nodeSpec.inputLabels.length, nodeSpec.outputLabels.length, x, y, nodeSpec.workerFunction, path, properties);
+		return new Node(nodeSpec.inputLabels.length, nodeSpec.outputLabels.length, x, y, nodeSpec.workerFunction, path, properties || nodeSpec.defaultProperties);
 	}
 	
 	static createNodeFromSpec(nodeSpec, x, y, properties){

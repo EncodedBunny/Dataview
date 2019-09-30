@@ -1,90 +1,149 @@
 const Dataflow = require("./dataflow");
+const uuid = require("uuid/v1");
 
 module.exports = function (driverManager) {
 	let module = {};
-	let devices = [];
-
-	module.addDevice = function(name, type, link, extraData){
-		if(!name) return false;
+	let devices = {};
+	
+	module.addDevice = function(name, type, extraData){
+		if(!name) return undefined;
 		let nameT = name.trim();
-		if(nameT.length <= 0 || module.getDevice(link) !== undefined || module.getDeviceByName(nameT) !== undefined) return false;
-		let device = {
-			name: nameT,
-			link: link,
-			formattedDevice: type,
-			/* TODO: Change this to driver */
-			device: driverManager.formattedNameToBaseName(type),
-			data: extraData,
-			sensors: [],
-			listeners: [],
-			listener: function (updates) {
-				for(const list of Object.values(device.listeners))
-					list(updates);
-			}
-		};
-		if(driverManager.attachDevice(device)) {
-			devices.push(device);
-			return true;
-		}
-		return false;
+		if(nameT.length <= 0 || module.getDeviceByName(nameT) !== undefined) return undefined;
+		let device = new Device(nameT, driverManager.formattedNameToBaseName(type), extraData, driverManager);
+		let id;
+		do{
+			id = uuid();
+		} while(device[id] !== undefined);
+		devices[id] = device;
+		if(driverManager.attachDevice(device, id))
+			return id;
+		return undefined;
 	};
 	
-	module.addSensor = function(deviceName, sensorName, extraData){
-		if(!deviceName || !sensorName) return -1;
-		let devName = deviceName.trim(), senName = sensorName.trim();
-		if(devName.length <= 0 || senName <= 0) return -1;
-		let device = module.getDeviceByName(devName);
+	module.addSensor = function(deviceID, sensorName, extraData){
+		if(!sensorName) return -1;
+		let senName = sensorName.trim();
+		if(senName <= 0) return -1;
+		let device = devices[deviceID];
 		if(!device) return -1;
-		let id = driverManager.attachSensor(device.device, device.name, extraData);
-		if(id !== -1) {
-			let sen = {type: senName, id: id, data: extraData};
-			device.sensors.push(sen);
-			Dataflow.registerNode(sensorName + " (" + deviceName + ")", "Sensors", [], ["value"], () => {
-				// TODO
-				return [];
+		let internalId = driverManager.attachSensor(device.driver, deviceID, extraData); // TODO: Enforce ID onto driver instead of receiving an internal ID
+		if(internalId !== -1) {
+			let sen = {type: senName, id: internalId, data: extraData, value: 0};
+			let id;
+			do{
+				id = uuid();
+			} while(device.sensors[id] !== undefined); // TODO: Verify uniqueness with respect to all devices (or a faster alternative, maybe global UUIDs)
+			device.sensors[id] = sen;
+			Dataflow.registerNode(sensorName + " (" + device.name + ")", "Sensors", [], ["value"], () => {
+				return sen.value;
 			});
+			return id;
 		}
-		return id;
+		return undefined;
 	};
 	
-	module.removeSensor = function(deviceName, sensorID){
-		if(!deviceName || sensorID === undefined || !Number.isInteger(sensorID)) return false;
-		let devName = deviceName.trim();
-		if(devName.length <= 0) return false;
-		let device = module.getDeviceByName(devName);
+	module.removeSensor = function(deviceID, sensorID){
+		let device = devices[deviceID];
 		if(!device) return false;
-		let filtered = device.sensors.filter(sensor => sensor.id !== sensorID);
-		let rem = filtered.length < device.sensors.length;
-		if(rem) {
-			device.sensors = filtered;
-			return driverManager.detachSensor(device, sensorID);
-		}
-		return false;
+		let status = driverManager.detachSensor(device, deviceID, sensorID);
+		if(status) delete device.sensors[sensorID];
+		return status;
 	};
 	
 	module.getDevices = function() {
-		return devices;
+		let res = [];
+		for(const id of Object.keys(devices))
+			res.push({id: id, device: devices[id].webInfo});
+		return res;
 	};
-
-	module.getDevice = function(link) {
-		return _getObjectByProperty(devices,"link", link);
+	
+	module.getDeviceList = function(){
+		return Object.values(devices);
 	};
-
+	
+	module.getDevice = function(id) {
+		return devices[id];
+	};
+	
 	module.getDeviceByName = function(name) {
-		return _getObjectByProperty(devices,"name", name);
-	};
-
-	module.getSensor = function(device, sensorId){
-		return _getObjectByProperty(module.getDeviceByName(device).sensors, "id", sensorId);
-	};
-
-	function _getObjectByProperty(array, prop, val){
-		if(!array) return undefined;
-		for(const obj of array)
-			if(obj[prop] === val)
-				return obj;
+		for(const device of Object.values(devices))
+			if(device.name === name)
+				return device;
 		return undefined;
-	}
-
+	};
+	
+	module.getSensor = function(deviceId, sensorId){
+		let device = devices[deviceId];
+		if(device)
+			return device.sensors[sensorId];
+		return undefined;
+	};
+	
 	return module;
 };
+
+class Device{
+	constructor(name, driver, extraData, driverManager){
+		this._name = name;
+		this._driver = driver;
+		this._deviceType = driverManager.baseNameToFormattedName(this._driver);
+		this._extraData = extraData;
+		this._sensors = {};
+		this._listeners = {};
+		this._listener = (updates) => {
+			for(const sensor of Object.values(this.sensors))
+				if(updates[sensor.id] !== undefined)
+					sensor.value = updates[sensor.id];
+			for(const list of Object.values(this._listeners))
+				list(updates);
+		}
+	}
+	
+	get name(){
+		return this._name;
+	}
+	
+	get deviceType(){
+		return this._deviceType;
+	}
+	
+	get driver(){
+		return this._driver;
+	}
+	
+	get extraData(){
+		return this._extraData;
+	}
+	
+	get sensors(){
+		return this._sensors;
+	}
+	
+	get listener(){
+		return this._listener;
+	}
+	
+	addListener(id, listener){
+		if(!this.hasListener(id)){
+			this._listeners[id] = listener;
+			return true;
+		}
+		return false;
+	}
+	
+	hasListener(listenerID){
+		return this._listeners[listenerID] !== undefined;
+	}
+	
+	removeListener(listenerID){
+		if(this.hasListener(listenerID)) {
+			delete this._listeners[listenerID];
+			return true;
+		}
+		return false;
+	}
+	
+	get webInfo(){
+		return {name: this.name, type: this.deviceType, sensors: this.sensors};
+	}
+}

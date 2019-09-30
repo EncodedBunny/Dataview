@@ -29,7 +29,7 @@ module.exports = function(deviceManager) {
 	module.getExperiments = function(){
 		let res = [];
 		for(const id of Object.keys(experiments))
-			res.push({id: id, experiment: experiments[id].getWebInfo()});
+			res.push({id: id, experiment: experiments[id].webInfo});
 		return res;
 	};
 	
@@ -98,7 +98,7 @@ class Experiment{
 		return this._graphs;
 	}
 	
-	getWebInfo(){
+	get webInfo(){
 		return {name: this.name, dataflow: this.dataflow.webStructure, sensors: this.sensors, graphs: this.graphs};
 	}
 }

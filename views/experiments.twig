@@ -7,10 +7,10 @@
 {% block body %}
 	<h1 class="pageTitle">Experiments</h1>
 	<div class="devicesGroupContainer" id="experimentsGroupContainer">
-		{% for experiment in experiments %}
+		{% for experimentData in experiments %}
 			<div class="container" style="width: 300px; height: 300px">
 				<header>
-					<span class="centerText title">{{ experiment.name }}</span>
+					<span class="centerText title">{{ experimentData.experiment.name }}</span>
 				</header>
 				<div class="mainView">
 					<span>Sensors: </span>
@@ -18,7 +18,7 @@
 				</div>
 				<footer class="footer">
 					<button class="dangerButton waves-light waves-button waves-float">Remove</button>
-					<button class="waves-light waves-button waves-float" onclick="enterSublink('{{ experiment.link }}')">View</button>
+					<button class="waves-light waves-button waves-float" onclick="enterSublink('{{ experimentData.id }}')">View</button>
 				</footer>
 			</div>
 		{% endfor %}
@@ -53,11 +53,5 @@
 				});
 			}));
 		});
-		let displayBtn = document.createElement("button");
-		displayBtn.innerText = "Open";
-		displayBtn.onclick = () => {
-			displayEditor();
-		};
-		root.appendChild(displayBtn);
 	</script>
 {% endblock %}

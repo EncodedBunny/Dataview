@@ -22,8 +22,8 @@ window.onresize = () => {_processTableColumnSizes()};
 let _domReady = false; // Fix menu being generated before DOM
 window.onload = () => {_domReady = true};
 socket.emit("getDevicesAndExperiments", (data) => {
-	for(const device of data.devices)
-		addMenuItem(device.name, device.link, "/devices", device.formattedDevice);
+	for(const deviceData of data.devices)
+		addMenuItem(deviceData.device.name, deviceData.id, "/devices", deviceData.device.type);
 	for(const expData of data.experiments)
 		addMenuItem(expData.experiment.name, expData.id, "/experiments");
 	if(_domReady)

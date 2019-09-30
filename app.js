@@ -6,6 +6,7 @@ module.exports = function(port){
 	const logger = require('morgan');
 	const sassMiddleware = require('node-sass-middleware');
 	const http = require('http');
+	const url = require("url");
 
 	const driverManager = require('./driverManager');
 	const deviceManager = require('./deviceManager')(driverManager);
@@ -63,13 +64,13 @@ module.exports = function(port){
 
 	const io = require("socket.io")(app.server);
 	io.on('connection', function(socket){
-		let linkFunction = function(name, fun, keys) {
+		let linkFunction = function(name, fun, keys, values) {
 			socket.on(name, (data, res) => {
 				let args = [];
 				if(keys !== undefined)
 					if(keys.length > 0)
 						for(const key of keys)
-							args.push(data[key]);
+							args.push((values !== undefined ? values[key] : undefined) || data[key]);
 					else
 						args.push(data);
 				let result = fun.apply(undefined, args);
@@ -77,24 +78,33 @@ module.exports = function(port){
 				else socket.emit(name, result);
 			});
 		};
-		linkFunction("addDevice", deviceManager.addDevice,["name", "device", "link", "extraData"]);
-		linkFunction("getDevice", deviceManager.getDevice,["link"]);
+		let checkAndGetFromUrl = function(parent){
+			let path = new url.URL(socket.request.headers.referer || "").pathname;
+			if(path.length > 0)
+				path = path.substring(1);
+			path = path.split("/");
+			if(path.length >= 2 && path[0] === parent)
+				return path[1];
+			return "";
+		};
+		linkFunction("addDevice", deviceManager.addDevice,["name", "type", "extraData"]);
+		linkFunction("getDevice", deviceManager.getDevice,["id"]);
 		linkFunction("getDevices", deviceManager.getDevices);
 		
-		socket.on("listenDevice", (device, res) => {
-			let dev = deviceManager.getDeviceByName(device);
-			let status = false;
-			if(dev && !dev.listeners[socket.id]) {
-				dev.listeners[socket.id] = (updates) => {
-					socket.emit("sensorData", updates);
-				};
-				status = true;
-			}
-			if(res && typeof res === "function") res(status);
+		socket.on("listenDevice", (deviceID) => {
+			let dev = deviceManager.getDevice(deviceID || checkAndGetFromUrl("devices"));
+			if(dev)
+				dev.addListener(socket.id, (updates) => { // TODO: Add this listener to default device listener function
+					let ups = {};
+					for(const senID of Object.keys(dev.sensors))
+						if (Object.keys(updates).includes(dev.sensors[senID].id + ""))
+							ups[senID] = updates[dev.sensors[senID].id];
+					socket.emit("sensorData", ups);
+				});
 		});
 		
-		linkFunction("addSensor", deviceManager.addSensor,["deviceName", "sensorName", "extraData"]);
-		linkFunction("removeSensor", deviceManager.removeSensor,["deviceName", "sensorID"]);
+		linkFunction("addSensor", deviceManager.addSensor,["deviceID", "sensorName", "extraData"]);
+		linkFunction("removeSensor", deviceManager.removeSensor,["deviceID", "sensorID"],{deviceID: checkAndGetFromUrl("devices")});
 		
 		linkFunction("addExperiment", experimentManager.addExperiment,["name"]);
 		linkFunction("getExperiment", experimentManager.getExperiment,["id"]);
@@ -109,9 +119,8 @@ module.exports = function(port){
 		});
 		
 		socket.on('disconnect', function() {
-			for(const device of deviceManager.getDevices())
-				if(device.listeners[socket.id])
-					delete device.listeners[socket.id];
+			for(const device of deviceManager.getDeviceList())
+				device.removeListener(socket.id);
 		});
 	});
 

@@ -109,22 +109,21 @@ function _saveChanges(sync){
 		fs.writeFile(path.join(__dirname, "drivers.json"), JSON.stringify(driversFile));
 }
 
-function attachDevice(device) {
-	if(!device || !device.device || !device.name || !device.data || !drivers[device.device]) return false;
-	if(drivers[device.device].registerDevice(device.name, device.data))
-		return drivers[device.device].addListener(device.name, device.listener);
+function attachDevice(device, deviceID) {
+	if(!device || !device.driver || !device.name || !device.extraData || !drivers[device.driver]) return false;
+	if(drivers[device.driver].registerDevice(deviceID, device.extraData))
+		return drivers[device.driver].addListener(deviceID, device.listener);
 	return false;
 }
 
-function attachSensor(driver, device, extraData){
-	if(!driver || !device || !extraData || !drivers[driver]) return -1;
-	return drivers[driver].registerSensor(device, extraData);
+function attachSensor(driver, deviceID, extraData){
+	if(!driver || !deviceID || !extraData || !drivers[driver]) return -1;
+	return drivers[driver].registerSensor(deviceID, extraData);
 }
 
-function detachSensor(device, id){
-	if(!device || id === undefined || !Number.isInteger(id) || !drivers[device.device]) return false;
-	let dResp = drivers[device.device].unregisterSensor(device.name, id);
-	return dResp;
+function detachSensor(device, deviceID, sensorID){
+	if(!drivers[device.driver] || !device.sensors[sensorID]) return false;
+	return drivers[device.driver].unregisterSensor(deviceID, device.sensors[sensorID].id);
 }
 
 /*setInterval(_saveChanges, 5 * 60 * 1000);
