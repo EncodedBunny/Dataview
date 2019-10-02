@@ -16,8 +16,9 @@ module.exports = function(deviceManager) {
 	
 	module.addSensorToExperiment = function(experimentID, deviceID, sensorID){
 		if(experiments[experimentID])
-			return experiments[experimentID].addSensor(deviceID, sensorID);
-		return false;
+			if(experiments[experimentID].addSensor(deviceID, sensorID))
+				return deviceManager.getDevice(deviceID).sensors[sensorID];
+		return undefined;
 	};
 	
 	module.getExperiment = function(id){

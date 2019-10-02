@@ -32,7 +32,7 @@
 			</tbody>
 		</table>
 	{% endif %}
-	<button class="waves-button waves-float waves-ripple blueButton" style="margin-left: 0" onclick="openAddSensorDialog()">Add Sensor</button>
+	<button class="waves-button waves-float waves-ripple blueButton" style="margin-left: 0" onclick="openAddSensorDialog()">Configure Sensors</button>
 	<h2 class="pageSubtitle">Graphs</h2>
 {% endblock %}
 
@@ -47,28 +47,81 @@
 		function displayDataflowEditor(){
 			displayEditor(dtf, () => {
 				socket.emit("updateExperimentDataflow", {id: "{{ experimentID }}", dataflowStructure: currentEditor.fileStructure}, (res) => {
-					if(res) closeEditor();
-					else alert("An error occurred while trying to save");
+					if(!res) alert("An error occurred while trying to save");
+					closeEditor();
 				});
 			});
+		}
+		
+		function hasSensor(sensorID){
+			for(const sensor of experiment.sensors)
+				if(sensor.id === sensorID) return true;
+			return false;
 		}
 		
 		function openAddSensorDialog(){
 			// TODO: Display all devices and their sensor in a list that pops up
 			let ul = document.createElement("ul");
+			ul.classList.add("menu");
 			for(const devData of {{ devices|json_encode|raw }}){
 				if(Object.keys(devData.device.sensors).length <= 0) continue;
 				let devLi = document.createElement("li");
+				devLi.classList.add("menuItem");
+				let devDiv = document.createElement("div");
+				devDiv.classList.add("menuItemHeader");
+				let arrowDiv = document.createElement("div");
+				arrowDiv.classList.add("menuArrow");
+				devDiv.appendChild(arrowDiv);
 				let devSpan = document.createElement("span");
 				devSpan.appendChild(document.createTextNode(devData.device.name));
-				devLi.appendChild(devSpan);
-				let senLi = document.createElement("li");
-				for(const sensor of Object.values(devData.device.sensors)){
+				devDiv.appendChild(devSpan);
+				devLi.appendChild(devDiv);
+				let senUl = document.createElement("ul");
+				senUl.classList.add("inner");
+				devSpan.onclick = arrowDiv.onclick = () => {
+					devLi.classList.toggle("active");
+					devDiv.classList.toggle("activeMenuItem");
+					arrowDiv.classList.toggle("active");
+					senUl.classList.toggle("active");
+				};
+				for(const sensorID of Object.keys(devData.device.sensors)){
+					let senLi = document.createElement("li");
+					senLi.classList.add("menuItem");
+					let senDiv = document.createElement("div");
+					senDiv.classList.add("menuItemHeader", "noChildren");
 					let senSpan = document.createElement("span");
-					senSpan.appendChild(document.createTextNode(sensor.type));
-					senLi.appendChild(senSpan);
+					senSpan.appendChild(document.createTextNode(devData.device.sensors[sensorID].type));
+					senDiv.appendChild(senSpan);
+					let added = hasSensor(sensorID);
+					let btn = document.createElement("button");
+					btn.classList.add(added ? "dangerButton" : "blueButton", "waves-button", "waves-float", "waves-ripple");
+					btn.appendChild(document.createTextNode(added ? "Remove" : "Add"));
+					btn.setAttribute("style", "margin-left: auto");
+					btn.onclick = () => {
+						let prevState = hasSensor(sensorID);
+						if(prevState){
+							for(const index in experiment.sensors)
+								if(experiment.sensors[index].id === sensorID){
+									experiment.sensors.splice(index, 1);
+									break;
+								}
+						} else {
+							socket.emit("addSensorToExperiment", {experimentID: "{{ experimentID }}", deviceID: devData.id, sensorID: sensorID}, (sensor) => {
+								if(sensor)
+									experiment.sensors.push(sensor);
+							});
+						}
+						btn.classList.toggle("dangerButton");
+						btn.classList.toggle("blueButton");
+						while(btn.lastChild) // TODO: Create function for this in graphicEnvironment
+							btn.removeChild(btn.lastChild);
+						btn.appendChild(document.createTextNode(prevState ? "Add" : "Remove"));
+					};
+					senDiv.appendChild(btn);
+					senLi.appendChild(senDiv);
+					senUl.appendChild(senLi);
 				}
-				devLi.appendChild(senLi);
+				devLi.appendChild(senUl);
 				ul.appendChild(devLi);
 			}
 			displayWindow("Add Sensors To Experiment", 450, ul);
