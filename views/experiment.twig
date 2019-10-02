@@ -8,17 +8,31 @@
 	<h1 class="pageTitle">Experiment "{{ experiment.name }}"</h1>
 	<button class="waves-button waves-float waves-ripple" onclick="displayDataflowEditor()">Edit Dataflow</button>
 	<h2 class="pageSubtitle">Sensors</h2>
-	<table>
-		<thead>
+	{% if experiment.sensors|length <= 0 %}
+		<div class="emptyTableDiv">
+			<span>This experiment does not have any sensors</span>
+		</div>
+	{% else %}
+		<table>
+			<thead>
 			<tr>
 				<th col-size="medium">Name</th>
 				<th col-size="medium">Device</th>
 				<th col-size="uuid">ID</th>
 			</tr>
-		</thead>
-		<tbody id="tableBody">
-		</tbody>
-	</table>
+			</thead>
+			<tbody id="tableBody">
+			{% for sensorData in experiment.sensors %}
+				<tr>
+					<td col-size="medium">{{ sensorData.name }}</td>
+					<td col-size="medium">{{ sensorData.device }}</td>
+					<td col-size="uuid" class="highlightText">{{ sensorData.id }}</td>
+				</tr>
+			{% endfor %}
+			</tbody>
+		</table>
+	{% endif %}
+	<button class="waves-button waves-float waves-ripple blueButton" style="margin-left: 0" onclick="openAddSensorDialog()">Add Sensor</button>
 	<h2 class="pageSubtitle">Graphs</h2>
 {% endblock %}
 
@@ -30,36 +44,6 @@
 		let dtf = new Dataflow(experiment.dataflow);
 		Waves.init();
 		
-		let tBody = document.getElementById("tableBody");
-		for(let i = 0; i < 100; i++){
-			let tr = document.createElement("tr");
-			let name = document.createElement("td");
-			name.appendChild(document.createTextNode("Test Sensor"));
-			name.setAttribute("col-size", "medium");
-			tr.appendChild(name);
-			let dev = document.createElement("td");
-			dev.appendChild(document.createTextNode("CR10X"));
-			dev.setAttribute("col-size", "medium");
-			tr.appendChild(dev);
-			let uuid = document.createElement("td");
-			let uuidSpan = document.createElement("span");
-			uuidSpan.classList.add("highlightText");
-			uuidSpan.appendChild(document.createTextNode(create_UUID()));
-			uuid.appendChild(uuidSpan);
-			uuid.setAttribute("col-size", "uuid");
-			tr.appendChild(uuid);
-			tBody.appendChild(tr);
-		}
-		
-		function create_UUID(){
-			let dt = new Date().getTime();
-			return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-				let r = (dt + Math.random()*16)%16 | 0;
-				dt = Math.floor(dt/16);
-				return (c === 'x' ? r :(r&0x3|0x8)).toString(16);
-			});
-		}
-		
 		function displayDataflowEditor(){
 			displayEditor(dtf, () => {
 				socket.emit("updateExperimentDataflow", {id: "{{ experimentID }}", dataflowStructure: currentEditor.fileStructure}, (res) => {
@@ -67,6 +51,27 @@
 					else alert("An error occurred while trying to save");
 				});
 			});
+		}
+		
+		function openAddSensorDialog(){
+			// TODO: Display all devices and their sensor in a list that pops up
+			let ul = document.createElement("ul");
+			for(const devData of {{ devices|json_encode|raw }}){
+				if(Object.keys(devData.device.sensors).length <= 0) continue;
+				let devLi = document.createElement("li");
+				let devSpan = document.createElement("span");
+				devSpan.appendChild(document.createTextNode(devData.device.name));
+				devLi.appendChild(devSpan);
+				let senLi = document.createElement("li");
+				for(const sensor of Object.values(devData.device.sensors)){
+					let senSpan = document.createElement("span");
+					senSpan.appendChild(document.createTextNode(sensor.type));
+					senLi.appendChild(senSpan);
+				}
+				devLi.appendChild(senLi);
+				ul.appendChild(devLi);
+			}
+			displayWindow("Add Sensors To Experiment", 450, ul);
 		}
 	</script>
 {% endblock %}

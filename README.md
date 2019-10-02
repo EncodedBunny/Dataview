@@ -6,10 +6,10 @@ management of multiple equipment through a web platform.
 
 ##### High priority infrastructure
 - [ ] Web interface
-    - [ ] Welcome screen
+    - [ ] Welcome screen (In progress :hourglass_flowing_sand:)
     - [x] Devices screen
     - [x] Sensors screen
-    - [ ] Experiments screen
+    - [ ] Experiments screen (In progress :hourglass_flowing_sand:)
 - [x] Device drivers
     - [x] Device driver standardization
     - [x] Device driver loader
@@ -19,7 +19,7 @@ management of multiple equipment through a web platform.
     - [x] Dataflow file structure
     - [ ] Server side dataflow processor (In progress :hourglass_flowing_sand:)
     - [x] Client side dataflow editor
-    - [ ] Client to server dataflow exchange (In progress :hourglass_flowing_sand:)
+    - [x] Client to server dataflow exchange
     - [ ] Physical units for processed sensor data
 - [ ] Graphs and other data display
     - [ ] Time x Variable graph

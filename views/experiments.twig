@@ -13,8 +13,8 @@
 					<span class="centerText title">{{ experimentData.experiment.name }}</span>
 				</header>
 				<div class="mainView">
-					<span>Sensors: </span>
-					<span>Graphs: </span>
+					<span>Sensors: {{ experimentData.experiment.sensors.length }}</span>
+					<span>Graphs: {{ experimentData.experiment.graphs.length }}</span>
 				</div>
 				<footer class="footer">
 					<button class="dangerButton waves-light waves-button waves-float">Remove</button>

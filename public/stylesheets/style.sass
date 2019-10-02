@@ -11,6 +11,11 @@
 	&:hover
 		background-color: lighten($color, 5%)
 
+@mixin buttonTheme($color)
+	background-color: $color !important
+	&:hover
+		background-color: lighten($color, 5%) !important
+
 $primary: #303f9f
 $secondary: #2e7d32
 $background: #303030
@@ -194,6 +199,22 @@ table
 .col-size-uuid
 	width: 12%
 	max-width: 270px
+
+.emptyTableDiv
+	position: relative
+	height: 50px
+	border-radius: 5px
+	background-color: rgba($background-dark, 0.2)
+	text-align: center
+	left: 50%
+	transform: translate(-50%, 0)
+	border-style: solid
+	border-color: rgba($background-dark, 0.5)
+	border-width: 5px
+	span
+		font-size: large
+		vertical-align: middle
+		line-height: 50px
 
 .highlightText
 	border-radius: 5px
@@ -413,8 +434,10 @@ li.menuItem
 		background-color: lighten($background-dark, 5%) !important
 
 .dangerButton
-	@include focusable($danger)
-	background-color: $danger !important
+	@include buttonTheme($danger)
+
+.blueButton
+	@include buttonTheme($primary)
 
 .screenDiv
 	background-color: rgba($background-black, 0.5)
