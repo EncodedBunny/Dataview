@@ -10,6 +10,10 @@ management of multiple equipment through a web platform.
     - [x] Devices screen
     - [x] Sensors screen
     - [ ] Experiments screen (In progress :hourglass_flowing_sand:)
+- [ ] JSON form specifier
+    - [x] Basic form functionality
+    - [ ] Events
+    - [ ] More input types
 - [x] Device drivers
     - [x] Device driver standardization
     - [x] Device driver loader

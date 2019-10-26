@@ -1,6 +1,41 @@
 const Dataflow = require("./dataflow");
 const uuid = require("uuid/v4");
 
+const measurementTypes = {
+	"Time Limited": {
+		form: {
+			"timeLimit": {
+				type: "textbox",
+				isTitled: true,
+				title: "Time Limit"
+			}
+		}
+	},
+	"Cyclic": {
+		form: {
+			"cycleLength": {
+				type: "textbox",
+				isTitled: true,
+				title: "Cycle Duration"
+			},
+			"maxCycles": {
+				type: "textbox",
+				isTitled: true,
+				title: "Cycle Count"
+			}
+		}
+	},
+	"Signal Limited": {
+		form: {
+			"watcherName": {
+				type: "textbox",
+				isTitled: true,
+				title: "Watcher Node Name"
+			}
+		}
+	}
+};
+
 module.exports = function(deviceManager) {
 	let module = {};
 	let experiments = {};
@@ -21,6 +56,12 @@ module.exports = function(deviceManager) {
 		return undefined;
 	};
 	
+	module.removeSensorFromExperiment = function(experimentID, sensorID){
+		if(experiments[experimentID])
+			return experiments[experimentID].removeSensor(sensorID);
+		return false;
+	};
+	
 	module.getExperiment = function(id){
 		return experiments[id];
 	};
@@ -38,21 +79,30 @@ module.exports = function(deviceManager) {
 		return false;
 	};
 	
+	module.getMeasurementTypes = () => {return measurementTypes};
+	
 	class Experiment{
 		constructor(name, dataflowStructure) {
 			this._name = name;
-			this._sensors = [];
+			this._sensors = {};
 			this._dataflow = new Dataflow(dataflowStructure);
 			this._graphs = [];
+			this._measurement = undefined;
 		}
 		
 		addSensor(deviceID, sensorID){
-			if(this._sensors.includes(sensorID)) return false;
+			if(this._sensors[sensorID]) return false;
 			if(deviceManager.getSensor(deviceID, sensorID)) {
-				this._sensors.push({device: deviceID, sensor: sensorID}); // TODO: Make sub arrays of device IDs
+				this._sensors[sensorID] = deviceID; // TODO: Make sub arrays of device IDs
 				return true;
 			}
 			return false;
+		}
+		
+		removeSensor(sensorID){
+			if(!this._sensors[sensorID]) return false;
+			delete this._sensors[sensorID]; // TODO: Clean places where sensor is used (Dataflows)
+			return true;
 		}
 		
 		setDataflowStructure(dataflowStructure){
@@ -100,8 +150,9 @@ module.exports = function(deviceManager) {
 		get webInfo(){
 			let res = {name: this.name, dataflow: this.dataflow.webStructure, graphs: this.graphs};
 			let sensors = [];
-			for(const sensorData of this.sensors)
-				sensors.push({name: deviceManager.getSensor(sensorData.device, sensorData.sensor).type, id: sensorData.sensor, device: deviceManager.getDevice(sensorData.device).name, deviceID: sensorData.device});
+			for(const sensorID in this.sensors)
+				if(this.sensors.hasOwnProperty(sensorID))
+					sensors.push({name: deviceManager.getSensor(this.sensors[sensorID], sensorID).type, id: sensorID, device: deviceManager.getDevice(this.sensors[sensorID]).name, deviceID: this.sensors[sensorID]});
 			res.sensors = sensors;
 			return res;
 		}

@@ -7,7 +7,7 @@ let currentEditor;
 const colSizesSpec = {
 	"small": {pix: 150, per: 10},
 	"medium": {pix: 200, per: 15},
-	"uuid": {pix: 280, per: 20}
+	"uuid": {pix: 360, per: 25}
 };
 
 let colSizes = {};
@@ -37,7 +37,8 @@ screenDiv.addEventListener("transitionend", () => {
 		screenDiv.setAttribute("style", "opacity: 0; z-index: -2");
 });
 
-function displayWindow(title, width, content){
+function displayWindow(title, width, content, options){
+	options = options || {};
 	let window = document.createElement("div");
 	window.setAttribute("style", "width: " + width + "px; height: auto");
 	window.classList.add("window");
@@ -53,6 +54,7 @@ function displayWindow(title, width, content){
 	closeButton.classList.add("closeButton", "waves-effect", "waves-light", "waves-button");
 	closeButton.addEventListener("click", () => {
 		closeWindow(window);
+		if(options.onClose && typeof options.onClose === "function") options.onClose();
 	});
 	closeButton.appendChild(document.createTextNode("X"));
 	titleBar.appendChild(closeButton);
@@ -60,6 +62,8 @@ function displayWindow(title, width, content){
 	window.appendChild(titleBar);
 	let windowContentHolder = document.createElement("div");
 	windowContentHolder.classList.add("windowContentHolder");
+	if(options.marginBottom === false) windowContentHolder.style.marginBottom = "0";
+	if(options.maxHeight !== undefined) windowContentHolder.style.maxHeight = (screenDiv.offsetHeight*options.maxHeight/100)+"px";
 	content.classList.add("windowContent");
 	windowContentHolder.appendChild(content);
 	window.appendChild(windowContentHolder);
@@ -75,8 +79,8 @@ function displayEditor(dataflow, onClose){
 		document.getElementById("editorContainer").setAttribute("style","display: block");
 		
 		let canvas = document.getElementById("editorCanvas");
-		canvas.width = Math.ceil(screenDiv.offsetWidth * 0.9);
-		canvas.height = Math.ceil(screenDiv.offsetHeight * 0.9);
+		canvas.width = Math.floor(screenDiv.offsetWidth * 0.9);
+		canvas.height = Math.floor(screenDiv.offsetHeight * 0.9);
 		
 		let topMenu = document.getElementById("editorMenu");
 		topMenu.setAttribute("style", "width: " + canvas.width + "px");

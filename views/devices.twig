@@ -1,14 +1,14 @@
 {% extends 'layout.twig' %}
 
 {% block body %}
-	<h1 class="pageTitle">Devices</h1>
+	<h2>Devices</h2>
 	<div class="devicesGroupContainer" id="devicesGroupContainer"></div>
 {% endblock %}
 
 {% block scripts %}
 	<script type="text/javascript">
 		let root = document.getElementById("devicesGroupContainer");
-		root.appendChild(createPlaceholderContainer(300, 300, "addDevice"));
+		root.appendChild(createPlaceholderContainer(300, 200, "addDevice"));
 		let deviceForms = {{ deviceForms|json_encode|raw }};
 		let installedDrivers = {{ installedDrivers|json_encode|raw }};
 		let devices = {{ devices|json_encode|raw }};
@@ -37,9 +37,9 @@
 				}));
 			}));
 		});
-
+		
 		function createDeviceContainer(type, name){
-			let container = createContainer(300, 300);
+			let container = createContainer(300, 200);
 			let title = document.createElement("span");
 			title.appendChild(document.createTextNode(name));
 			title.classList.add("centerText", "title");

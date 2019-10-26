@@ -1,6 +1,15 @@
 @import url('https://fonts.googleapis.com/css?family=Roboto&display=swap')
 @import url('https://fonts.googleapis.com/css?family=Ubuntu+Mono&display=swap')
 
+$primary: #303f9f
+$secondary: #2e7d32
+$background: #303030
+$background-light: #424242
+$background-dark: #212121
+$background-black: #000000
+$text: #fafafa
+$danger: #b71c1c
+
 @mixin center
 	position: absolute
 	top: 50%
@@ -15,21 +24,15 @@
 	background-color: $color !important
 	&:hover
 		background-color: lighten($color, 5%) !important
-
-$primary: #303f9f
-$secondary: #2e7d32
-$background: #303030
-$background-light: #424242
-$background-dark: #212121
-$background-black: #000000
-$text: #fafafa
-$danger: #b71c1c
+	&:disabled
+		background-color: mix($color, $background-light, 60%) !important
 
 body
 	padding: 10px
-	font: 14px "Lucida Grande", Helvetica, Arial, sans-serif
 	background-color: $background
 	font-family: 'Roboto', sans-serif
+	font-size: 1rem
+	letter-spacing: 0.5px
 	color: $text
 	user-select: none
 	font-weight: normal
@@ -39,7 +42,6 @@ a
 	margin: 0 0 0 0 // 32px
 	padding: 8px 8px 8px 0
 	text-decoration: none
-	font-size: 25px
 	display: block
 
 button
@@ -53,7 +55,7 @@ button
 	align-content: center
 	text-align: center
 	background-color: $background-dark
-	font-size: 0.875rem
+	font-size: 0.875rem !important
 	font-family: 'Roboto', sans-serif
 	text-transform: uppercase
 	font-weight: normal
@@ -65,6 +67,9 @@ button
 	overflow: hidden
 	box-shadow: 0 1px 1px -2px rgba($background-black, 0.2)
 	cursor: pointer
+	&:disabled
+		cursor: not-allowed !important
+		color: mix($text, $background-light, 60%) !important
 
 span
 	display: inline-flex
@@ -107,8 +112,6 @@ ul
 		padding-left: 0
 		height: 0
 		display: none
-		a
-			font-size: 20px
 		li
 			padding-left: 32px
 		&.active
@@ -256,13 +259,35 @@ table
 		background-color: $secondary
 
 .content
-	margin-left: 250px
+	margin-left: 200px
 
-.pageTitle
-	font-size: xx-large
+h1
+	font-size: 3.5rem
+	letter-spacing: -1.5px
 
-.pageSubtitle
-	font-size: x-large
+h2
+	font-size: 2rem
+	letter-spacing: -0.5px
+
+h3
+	font-size: 1.5rem
+	letter-spacing: 0
+
+h4
+	font-size: 1.25rem
+	letter-spacing: 0.25px
+
+h1, h2
+	font-weight: 400
+
+h3, h4
+	font-weight: normal
+
+span.subHeader
+	letter-spacing: 0.15px
+
+.pageTitle, .pageSubtitle, h3
+	font-weight: normal
 
 .devicesGroupContainer
 	display: flex
@@ -298,8 +323,6 @@ table
 	align-items: flex-start
 	justify-content: left
 	padding: 0 16px 0 16px
-	span
-		font-size: x-large
 
 .graphHolder
 	width: 95%
@@ -310,8 +333,9 @@ table
 
 .title
 	display: block
-	font-size: xx-large
 	text-align: center
+	font-weight: normal
+	font-size: 1.5rem
 	padding-top: 0.67em
 
 .subtitle
@@ -371,7 +395,7 @@ li.menuItem
 
 .sidenav
 	height: 100%
-	width: 250px
+	width: 200px
 	position: fixed
 	z-index: 1
 	top: 0
@@ -380,6 +404,8 @@ li.menuItem
 	overflow-x: hidden
 	margin-top: 0
 	padding-top: 60px
+	font-size: 1rem
+	letter-spacing: 0.5px
 	
 .menu
 	a, span
@@ -423,6 +449,7 @@ li.menuItem
 
 .windowContentHolder
 	margin-bottom: 50px
+	overflow-y: auto
 
 .closeButton
 	@include focusable($background-dark)
@@ -440,6 +467,9 @@ li.menuItem
 
 .blueButton
 	@include buttonTheme($primary)
+
+.greenButton
+	@include buttonTheme($secondary)
 
 .screenDiv
 	background-color: rgba($background-black, 0.5)
@@ -474,13 +504,12 @@ li.menuItem
 .errorStatus
 	text-align: center
 	margin-bottom: 60px
+	letter-spacing: normal
 	font-weight: normal
 
 .errorHeader
 	margin-bottom: 0
 	text-align: center
-	font-size: xx-large
-	font-weight: normal
 
 .stackTraceHeader
 	font-weight: normal

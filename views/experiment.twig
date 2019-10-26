@@ -5,9 +5,17 @@
 {% endblock %}
 
 {% block body %}
-	<h1 class="pageTitle">Experiment "{{ experiment.name }}"</h1>
-	<button class="waves-button waves-float waves-ripple" onclick="displayDataflowEditor()">Edit Dataflow</button>
-	<h2 class="pageSubtitle">Sensors</h2>
+	<h2>Experiment "{{ experiment.name }}"</h2>
+	<span class="subHeader">Current Measurement:
+	{% if experiment.measurement %}
+		{{ experiment.measurement }}
+	{% else %}
+		None
+	{% endif %}
+	</span>
+	<button class="waves-button waves-float waves-ripple" onclick="displayMeasurementSelector()" style="margin-top: 14px">Configure</button>
+	<button class="waves-button waves-float waves-ripple greenButton" onclick="" style="margin-top: 14px; margin-left: 0" title="You must configure a measurement before starting one" disabled>Begin</button> <!-- TODO: Check if measurement is configured -->
+	<h3>Sensors</h3>
 	{% if experiment.sensors|length <= 0 %}
 		<div class="emptyTableDiv">
 			<span>This experiment does not have any sensors</span>
@@ -26,14 +34,14 @@
 				<tr>
 					<td col-size="medium">{{ sensorData.name }}</td>
 					<td col-size="medium">{{ sensorData.device }}</td>
-					<td col-size="uuid" class="highlightText">{{ sensorData.id }}</td>
+					<td col-size="uuid"><span class="highlightText">{{ sensorData.id }}</span></td>
 				</tr>
 			{% endfor %}
 			</tbody>
 		</table>
 	{% endif %}
 	<button class="waves-button waves-float waves-ripple blueButton" style="margin-left: 0" onclick="openAddSensorDialog()">Configure Sensors</button>
-	<h2 class="pageSubtitle">Graphs</h2>
+	<h3>Graphs</h3>
 {% endblock %}
 
 {% block scripts %}
@@ -43,6 +51,8 @@
 		loadDataflowMenuNodes({{ registeredNodes|json_encode|raw }});
 		let dtf = new Dataflow(experiment.dataflow);
 		Waves.init();
+		
+		let measurementTypes = {{ measurementTypes|json_encode|raw }};
 		
 		function displayDataflowEditor(){
 			displayEditor(dtf, () => {
@@ -59,10 +69,17 @@
 			return false;
 		}
 		
+		function changeBtnType(btn, shouldAdd){
+			btn.classList.toggle("dangerButton");
+			btn.classList.toggle("blueButton");
+			while(btn.lastChild) // TODO: Create function for this in graphicEnvironment
+				btn.removeChild(btn.lastChild);
+			btn.appendChild(document.createTextNode(shouldAdd ? "Add" : "Remove"));
+		}
+		
 		function openAddSensorDialog(){
-			// TODO: Display all devices and their sensor in a list that pops up
-			let ul = document.createElement("ul");
-			ul.classList.add("menu");
+			let dialogRoot = document.createElement("ul");
+			dialogRoot.classList.add("menu");
 			for(const devData of {{ devices|json_encode|raw }}){
 				if(Object.keys(devData.device.sensors).length <= 0) continue;
 				let devLi = document.createElement("li");
@@ -100,31 +117,56 @@
 					btn.onclick = () => {
 						let prevState = hasSensor(sensorID);
 						if(prevState){
-							for(const index in experiment.sensors)
-								if(experiment.sensors[index].id === sensorID){
-									experiment.sensors.splice(index, 1);
-									break;
+							socket.emit("removeSensorFromExperiment", {experimentID: "{{ experimentID }}", sensorID: sensorID}, (status) => {
+								if(status) {
+									for(const index in experiment.sensors)
+										if(experiment.sensors.hasOwnProperty(index) && experiment.sensors[index].id === sensorID){
+											experiment.sensors.splice(index, 1);
+											break;
+										}
+									changeBtnType(btn, true);
 								}
+							});
 						} else {
 							socket.emit("addSensorToExperiment", {experimentID: "{{ experimentID }}", deviceID: devData.id, sensorID: sensorID}, (sensor) => {
-								if(sensor)
+								if(sensor) {
 									experiment.sensors.push(sensor);
+									changeBtnType(btn, false);
+								}
 							});
 						}
-						btn.classList.toggle("dangerButton");
-						btn.classList.toggle("blueButton");
-						while(btn.lastChild) // TODO: Create function for this in graphicEnvironment
-							btn.removeChild(btn.lastChild);
-						btn.appendChild(document.createTextNode(prevState ? "Add" : "Remove"));
 					};
 					senDiv.appendChild(btn);
 					senLi.appendChild(senDiv);
 					senUl.appendChild(senLi);
 				}
 				devLi.appendChild(senUl);
-				ul.appendChild(devLi);
+				dialogRoot.appendChild(devLi);
 			}
-			displayWindow("Add Sensors To Experiment", 450, ul);
+			if(dialogRoot.children.length <= 0){
+				let noSensorSpan = document.createElement("span");
+				noSensorSpan.appendChild(document.createTextNode("No Sensor In Project"));
+				dialogRoot.appendChild(noSensorSpan);
+			}
+			displayWindow("Add Sensors To Experiment", 450, dialogRoot, {onClose: () => {
+				reload();
+			}, marginBottom: false, maxHeight: 70});
+		}
+		
+		function displayMeasurementSelector(){
+			let typeWindow = displayWindow("Configure Measurement", 450, createForm({
+				"type": {
+					"type": "list",
+					"isTitled": true,
+					"title": "Type",
+					"items": Object.keys(measurementTypes) // TODO: Get supported measurement types (maybe the intersection of all supported types from all devices related to this experiment)
+				}
+			}, "next", (typeData) => {
+				closeWindow(typeWindow);
+				displayWindow("Configure Measurement", 450, createForm(measurementTypes[typeData.type].form, "done", (data) => {
+				
+				}));
+			}));
 		}
 	</script>
 {% endblock %}

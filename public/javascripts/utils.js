@@ -4,5 +4,13 @@ function cleanString(str){
 
 function enterSublink(sublink){
 	let currentLoc = window.location.pathname;
-	window.location.replace(currentLoc + (currentLoc.endsWith("/") ? "" : "/") + sublink);
+	window.location.assign(currentLoc + (currentLoc.endsWith("/") ? "" : "/") + sublink);
+}
+
+function enterSuperlink(){
+	window.location.assign(window.location.pathname.split("/").slice(0, -1).join("/"));
+}
+
+function reload(){
+	window.location.reload();
 }

@@ -5,10 +5,10 @@
 {% endblock %}
 
 {% block body %}
-	<h1 class="pageTitle">Experiments</h1>
+	<h2>Experiments</h2>
 	<div class="devicesGroupContainer" id="experimentsGroupContainer">
 		{% for experimentData in experiments %}
-			<div class="container" style="width: 300px; height: 300px">
+			<div class="container" style="width: 300px; height: 200px">
 				<header>
 					<span class="centerText title">{{ experimentData.experiment.name }}</span>
 				</header>
@@ -22,7 +22,7 @@
 				</footer>
 			</div>
 		{% endfor %}
-		<div class="container placeholder" style="width: 300px; height: 300px;">
+		<div class="container placeholder" style="width: 300px; height: 200px;">
 			<div class="plusCircleButton" id="addExperiment">
 				<span class="plusCircleText">+</span>
 			</div>
