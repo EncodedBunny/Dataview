@@ -9,6 +9,14 @@ const measurementTypes = {
 				isTitled: true,
 				title: "Time Limit"
 			}
+		},
+		execute: function(dataflow, config){
+			let intv = setInterval(() => {
+				dataflow.activate();
+			}, 100); // TODO: Get experiment execution rate
+			setTimeout(() => {
+				clearInterval(intv);
+			}, config.timeLimit);
 		}
 	},
 	"Cyclic": {
@@ -23,6 +31,22 @@ const measurementTypes = {
 				isTitled: true,
 				title: "Cycle Count"
 			}
+		},
+		execute: function(dataflow, config){
+			let intv = setInterval(() => {
+				dataflow.activate();
+			}, 100); // TODO: Get experiment execution rate
+			let cycle = 0;
+			let cycleSwitch = function(){
+				setTimeout(() => {
+					cycle++;
+					if(cycle >= config.maxCycles)
+						clearInterval(intv);
+					else
+						cycleSwitch();
+				}, config.cycleLength);
+			}
+			cycleSwitch();
 		}
 	},
 	"Signal Limited": {
@@ -81,6 +105,12 @@ module.exports = function(deviceManager) {
 	
 	module.getMeasurementTypes = () => {return measurementTypes};
 	
+	module.configureExperimentMeasurement = function(id, type, config){
+		if(experiments[id])
+			return experiments[id].configureMeasurement(type, config);
+		return false;
+	};
+	
 	class Experiment{
 		constructor(name, dataflowStructure) {
 			this._name = name;
@@ -129,6 +159,22 @@ module.exports = function(deviceManager) {
 				this._sensors.push({sensor});
 			for(const g of fileStructure.graphs)
 				this.addGraph(g.title, g.axis.x, g.axis.y, g.id);
+		}
+		
+		beginMeasurement(){
+			if(!this._measurement || this._measurement.active) return false;
+			this._measurement.active = true;
+			
+		}
+		
+		configureMeasurement(type, config){
+			if((this._measurement && this._measurement.active) || !measurementTypes[type]) return false;
+			this._measurement = {
+				active: false,
+				type: type,
+				config: config
+			};
+			return true;
 		}
 		
 		get dataflow(){

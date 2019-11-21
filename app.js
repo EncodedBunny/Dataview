@@ -112,6 +112,7 @@ module.exports = function(port){
 		linkFunction("updateExperimentDataflow", experimentManager.updateExperimentDataflow,["id", "dataflowStructure"]);
 		linkFunction("addSensorToExperiment", experimentManager.addSensorToExperiment,["experimentID", "deviceID", "sensorID"]);
 		linkFunction("removeSensorFromExperiment", experimentManager.removeSensorFromExperiment, ["experimentID", "sensorID"]);
+		linkFunction("configureExperimentMeasurement", experimentManager.configureExperimentMeasurement, ["experimentID", "type", "config"]);
 		
 		// TODO: Temporary fix, final fix will be to create a single manager that uses UUID namespaces
 		socket.on("getDevicesAndExperiments", (res) => {
