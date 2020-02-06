@@ -12,6 +12,7 @@
     "@serialport/parser-delimiter": "latest",
     "cookie-parser": "~1.4.4",
     "cr10x-driver": "file:../cr10x-driver",
+    "arduino-driver": "file:../arduino-driver",
     "debug": "~2.6.9",
     "express": "~4.16.1",
     "express-validator": "^6.1.1",
