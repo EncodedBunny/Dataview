@@ -85,6 +85,11 @@ function displayEditor(dataflow, onClose){
 		let topMenu = document.getElementById("editorMenu");
 		topMenu.setAttribute("style", "width: " + canvas.width + "px");
 		
+		let propMenu = document.getElementById("propMenu");
+		propMenu.setAttribute("style","max-width: " + canvas.width*0.2 + "px; height: " + canvas.height + "px");
+		
+		let propMenuBody = document.getElementById("propMenuBody");
+		
 		let close = document.getElementById("editorMenu-close");
 		close.onclick = () => {
 			if(typeof onClose === "function") onClose();
@@ -92,7 +97,44 @@ function displayEditor(dataflow, onClose){
 		};
 		
 		toggleScreenDiv(true);
-		currentEditor = new DataflowEditor(dataflow, canvas);
+		currentEditor = new DataflowEditor(dataflow, canvas,(node) => {
+			propMenu.classList.add("visible");
+			while(propMenuBody.lastChild)
+				propMenuBody.removeChild(propMenuBody.lastChild);
+			for(const prop of Object.keys(node._properties)){
+				let elementPanel = document.createElement("div");
+				elementPanel.classList.add("hbox", "formLine");
+				let label = document.createElement("span");
+				label.appendChild(document.createTextNode(prop.split("-").join(" ") + ":"));
+				label.setAttribute("style","text-transform: capitalize; margin-right: 5px");
+				elementPanel.appendChild(label);
+				let obj;
+				switch (typeof node._properties[prop]) {
+					case "string":
+						obj = document.createElement("input");
+						obj.type = "text";
+						break;
+					case "number":
+						obj = document.createElement("input");
+						obj.type = "number";
+						break;
+				}
+				obj.setAttribute("id", prop);
+				obj.setAttribute("name", prop);
+				obj.classList.add("formItem");
+				obj.value = node._properties[prop];
+				document.getElementById("editorPropMenuClose").onclick = () => {
+					currentEditor.deselectNode();
+				};
+				elementPanel.appendChild(obj);
+				propMenuBody.appendChild(elementPanel);
+			}
+		},(node) => {
+			propMenu.classList.remove("visible");
+			for(const child of propMenuBody.getElementsByClassName("formItem"))
+				if(child.value !== undefined && (typeof child.value === "string" ? child.value.length > 0 : true))
+					node.setProperty(child.id, child.value);
+		});
 	} else
 		toggleScreenDiv(true);
 
@@ -159,8 +201,8 @@ function loadDataflowMenuNodes(registeredNodes){
 				if(currentEditor) currentEditor.addNode(cat + "/" + t);
 			};
 			li.appendChild(nodeLink);
-			document.getElementById("editorMenu-addNode-content-" + cat + "-content").appendChild(li);
-			Dataflow.registerNode(node.title, node.category, node.inputLabels, node.outputLabels);
+			document.getElementById("editorMenu-addNode-content-" + cat + "-content").appendChild(li)
+			Dataflow.registerGlobalNode(node.title, node.category, node.inputLabels, node.outputLabels, node.defaultProperties);
 		}
 	}
 }
@@ -195,7 +237,7 @@ function createForm(template, submitText, onSubmit){
 		if(data.isTitled) {
 			let span = document.createElement("span");
 			span.appendChild(document.createTextNode((data.title || name) + ":"));
-			span.setAttribute("style", "text-transform: capitalize; margin-right: 5px");
+			span.setAttribute("style",(data.title === undefined ? "text-transform: capitalize;" : "") + "margin-right: 5px");
 			elementPanel.appendChild(span);
 		}
 		let obj;
@@ -209,6 +251,8 @@ function createForm(template, submitText, onSubmit){
 				for(const value of Object.values(data.items)) {
 					let item = document.createElement("option");
 					item.appendChild(document.createTextNode(value));
+					if(data.hasOwnProperty("value") && data.value === value)
+						item.setAttribute("selected","");
 					obj.appendChild(item);
 				}
 				break;
@@ -220,6 +264,9 @@ function createForm(template, submitText, onSubmit){
 				obj.addEventListener(listener.event, listener.callback);
 		obj.classList.add("formItem");
 		elementPanel.appendChild(obj);
+		if(data.hasOwnProperty("value"))
+			if(obj.tagName.toLowerCase() !== "select")
+				obj.setAttribute("value", data.value);
 		root.appendChild(elementPanel);
 	}
 	let submit = document.createElement("button");

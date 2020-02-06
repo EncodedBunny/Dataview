@@ -6,5 +6,14 @@
 		</li>
 		<li style="margin-left: auto" id="editorMenu-close" class="clickable"><a>Close</a></li>
 	</ul>
-	<canvas style="display: block" id="editorCanvas"></canvas>
+	<div style="display: flex">
+		<canvas style="display: block" id="editorCanvas"></canvas>
+		<div class="editorPropMenu" id="propMenu">
+			<header class="editorPropMenuHeader"><button class="closeButton waves-effect waves-light waves-button" id="editorPropMenuClose">X</button></header>
+			<div style="padding: 10px">
+				<h4 style="margin-top: 0">Properties:</h4>
+				<div id="propMenuBody" style="display: flex; flex-direction: column; flex-wrap: nowrap"></div>
+			</div>
+		</div>
+	</div>
 </div>

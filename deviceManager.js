@@ -26,17 +26,9 @@ module.exports = function (driverManager) {
 		if(senName <= 0) return -1;
 		let device = devices[deviceID];
 		if(!device) return -1;
-		let internalId = driverManager.attachSensor(device.driver, deviceID, extraData); // TODO: Enforce ID onto driver instead of receiving an internal ID
-		if(internalId !== -1) {
-			let sen = {type: senName, id: internalId, data: extraData, value: 0};
-			let id;
-			do{
-				id = uuid();
-			} while(device.sensors[id] !== undefined); // TODO: Verify uniqueness with respect to all devices (or a faster alternative, maybe global UUIDs)
-			device.sensors[id] = sen;
-			Dataflow.registerNode(sensorName + " (" + device.name + ")", "Sensors", [], ["value"], () => {
-				return sen.value;
-			});
+		let id = uuid(); // TODO: Verify uniqueness with respect to all devices (or a faster alternative, maybe global UUIDs)
+		if(driverManager.attachSensor(device.driver, deviceID, extraData, id)){
+			device.sensors[id] = {type: senName, data: extraData, value: 0};
 			return id;
 		}
 		return undefined;
@@ -45,7 +37,7 @@ module.exports = function (driverManager) {
 	module.removeSensor = function(deviceID, sensorID){
 		let device = devices[deviceID];
 		if(!device) return false;
-		let status = driverManager.detachSensor(device, deviceID, sensorID);
+		let status = driverManager.detachSensor(device.driver, deviceID, sensorID);
 		if(status) delete device.sensors[sensorID];
 		return status;
 	};

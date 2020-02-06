@@ -7,14 +7,24 @@
 {% block body %}
 	<h2>Experiment "{{ experiment.name }}"</h2>
 	<span class="subHeader">Current Measurement:
-	{% if experiment.measurement %}
-		{{ experiment.measurement }}
+	{% if experiment.measurement.type %}
+		{{ experiment.measurement.type }}
 	{% else %}
 		None
 	{% endif %}
 	</span>
-	<button class="waves-button waves-float waves-ripple" onclick="displayMeasurementSelector()" style="margin-top: 14px">Configure</button>
-	<button class="waves-button waves-float waves-ripple greenButton" onclick="" style="margin-top: 14px; margin-left: 0" title="You must configure a measurement before starting one" disabled>Begin</button> <!-- TODO: Check if measurement is configured -->
+	<div style="display: inline-flex; align-items: center">
+		<button class="waves-button waves-float waves-ripple" onclick="displayMeasurementSelector()" style="margin-top: 14px">Configure</button>
+		<button class="waves-button waves-float waves-ripple" onclick="displayDataflowEditor()" style="margin-top: 14px; margin-left: 0">Edit Dataflow</button>
+		{% if experiment.measurement.isActive %}
+			<button class="waves-button waves-float waves-ripple dangerButton" onclick="" style="margin-top: 14px; margin-left: 0">Stop</button>
+		{% else %}
+			<button class="waves-button waves-float waves-ripple greenButton" style="margin-top: 14px; margin-left: 0" {% if not experiment.measurement.type %}title="You must configure a measurement before starting one" disabled{% else %} onclick="beginMeasurement()"{% endif %}>Begin</button> <!-- TODO: Check if measurement is configured -->
+		{% endif %}
+		{% if experiment.dataflow.nodes|length <= 0 %}
+			<span class="warningIcon" title="The experiment's dataflow is empty"></span>
+		{% endif %}
+	</div>
 	<h3>Sensors</h3>
 	{% if experiment.sensors|length <= 0 %}
 		<div class="emptyTableDiv">
@@ -42,6 +52,79 @@
 	{% endif %}
 	<button class="waves-button waves-float waves-ripple blueButton" style="margin-left: 0" onclick="openAddSensorDialog()">Configure Sensors</button>
 	<h3>Graphs</h3>
+	<div class="devicesGroupContainer" id="graphsGroupContainer">
+		<script type="text/javascript">
+			let graphs = {};
+		</script>
+		{% for graph in experiment.graphs %}
+			<div class="container" style="width: 600px; height: 350px">
+				<header>
+					<span class="centerText title">{{ graph.title }}</span>
+				</header>
+				<div class="mainView">
+					<div class="graphHolder">
+						<canvas id="graph-{{ graph.title }}"></canvas>
+						<script type="text/javascript">
+							graphs["{{ graph.title }}"] = new Chart(document.getElementById("graph-{{ graph.title }}").getContext("2d"), {
+								type: 'line',
+								labels: [],
+								data: {
+									datasets: [{
+										fill: 'origin',
+										data: [],
+										borderColor: 'rgba(48, 63, 159, 1)',
+										borderWidth: 2,
+										pointBorderColor: 'rgba(48, 63, 159, 1)',
+										outerGlowColor: 'rgba(60, 78, 194, 1)',
+										outerGlowWidth: 5,
+										pointRadius: 1
+									}]
+								},
+								options: {
+									responsive: true,
+									scales: {
+										yAxes: [
+											{
+												labelString: "{{ graph.axisLabels.y }}",
+												ticks: {}
+											}
+										],
+										xAxes: [{
+											display: true,
+											labelString: "{{ graph.axisLabels.x }}",
+											ticks: {
+												maxTicksLimit: 10
+											}
+										}]
+									},
+									plugins: {
+										filler: {
+											propagate: true
+										}
+									},
+									legend: {
+										display: false
+									},
+									tooltips: {
+										enabled: false
+									},
+									animation: {
+										duration: 400
+									}
+								}
+							});
+						</script>
+					</div>
+				</div>
+				<footer class="footer"></footer>
+			</div>
+		{% endfor %}
+		<div class="container placeholder" style="width: 600px; height: 350px;">
+			<div class="plusCircleButton" id="addGraph">
+				<span class="plusCircleText">+</span>
+			</div>
+		</div>
+	</div>
 {% endblock %}
 
 {% block scripts %}
@@ -49,16 +132,57 @@
 	<script type="text/javascript">
 		let experiment = {{ experiment|json_encode|raw }};
 		loadDataflowMenuNodes({{ registeredNodes|json_encode|raw }});
+		loadDataflowMenuNodes(experiment.dataflow.registeredNodes);
 		let dtf = new Dataflow(experiment.dataflow);
 		Waves.init();
 		
 		let measurementTypes = {{ measurementTypes|json_encode|raw }};
+		
+		socket.emit("listenToExperiment", {id: "{{ experimentID }}"});
+		socket.on("graphData", (data) => {
+			let graph = graphs[data.title];
+			graph.data.labels.push(data.point.x);
+			graph.data.datasets.forEach((dataset) => {
+				dataset.data.push(data.point);
+				if(dataset.data.length > 10) {
+					graph.data.labels.shift();
+					dataset.data.shift();
+				}
+			});
+			graph.update();
+		});
+		
+		document.getElementById("addGraph").onclick = () => {
+			displayWindow("New Graph", 450, createForm({
+				"title": {
+					"type": "textbox",
+					"isTitled": true,
+					"title": "Title"
+				},
+				"xLbl": {
+					"type": "textbox",
+					"isTitled": true,
+					"title": "X Axis Label"
+				},
+				"yLbl": {
+					"type": "textbox",
+					"isTitled": true,
+					"title": "Y Axis Label"
+				}
+			}, "create", (data) => {
+				socket.emit("addGraphToExperiment", {experimentID: "{{ experimentID }}", title: data.title, xLbl: data.xLbl, yLbl: data.yLbl}, (res) => {
+					if(!res) alert("An error has occurred");
+					else reload();
+				});
+			}));
+		};
 		
 		function displayDataflowEditor(){
 			displayEditor(dtf, () => {
 				socket.emit("updateExperimentDataflow", {id: "{{ experimentID }}", dataflowStructure: currentEditor.fileStructure}, (res) => {
 					if(!res) alert("An error occurred while trying to save");
 					closeEditor();
+					reload();
 				});
 			});
 		}
@@ -154,19 +278,56 @@
 		}
 		
 		function displayMeasurementSelector(){
-			let typeWindow = displayWindow("Configure Measurement", 450, createForm({
+			let confTemplate = {
 				"type": {
 					"type": "list",
 					"isTitled": true,
 					"title": "Type",
 					"items": Object.keys(measurementTypes) // TODO: Get supported measurement types (maybe the intersection of all supported types from all devices related to this experiment)
+				},
+				"frequency": {
+					"type": "textbox",
+					"isTitled": true,
+					"title": "Measurement Frequency (ms)"
 				}
-			}, "next", (typeData) => {
+			};
+			{% if experiment.measurement.type %}
+			confTemplate.type.value = "{{ experiment.measurement.type }}";
+			confTemplate.frequency.value = "{{ experiment.measurement.frequency }}";
+			{% endif %}
+			let typeWindow = displayWindow("Configure Measurement", 450, createForm(confTemplate, "next", (generalData) => {
 				closeWindow(typeWindow);
-				displayWindow("Configure Measurement", 450, createForm(measurementTypes[typeData.type].form, "done", (data) => {
-				
+				let typeTemplate = measurementTypes[generalData.type].form;
+				{% if experiment.measurement.type %}
+				if(generalData.type === "{{ experiment.measurement.type }}"){
+					let data = {{ experiment.measurement.data|json_encode|raw }};
+					for(const field of Object.keys(data))
+						if(typeTemplate.hasOwnProperty(field))
+							typeTemplate[field].value = data[field];
+				}
+				{% endif %}
+				let confWindow = displayWindow("Configure Measurement", 450, createForm(typeTemplate, "done", (typeData) => {
+					socket.emit("setExperimentMeasurement", {id: "{{ experimentID }}", type: generalData.type, frequency: generalData.frequency, measurementData: typeData}, (res) => {
+						// TODO: Display message if it fails
+						closeWindow(confWindow);
+						reload();
+					});
 				}));
 			}));
+		}
+		
+		function beginMeasurement(){
+			socket.emit("beginExperiment", {id: "{{ experimentID }}"}, (res) => {
+				if(!res) alert("An error has occurred");
+				else reload();
+			});
+		}
+		
+		function stopMeasurement(){
+			socket.emit("stopExperiment", {id: "{{ experimentID }}"}, (res) => {
+				if(!res) alert("An error has occurred");
+				else reload();
+			});
 		}
 	</script>
 {% endblock %}

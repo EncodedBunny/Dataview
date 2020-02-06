@@ -9,6 +9,7 @@ $background-dark: #212121
 $background-black: #000000
 $text: #fafafa
 $danger: #b71c1c
+$warning: #ffcc00
 
 @mixin center
 	position: absolute
@@ -75,7 +76,7 @@ span
 	display: inline-flex
 	align-items: center
 
-input[type=text], input[type=password]
+input[type=text], input[type=password], input[type=number]
 	border-top: none
 	border-right: none
 	border-left: none
@@ -173,6 +174,31 @@ ul
 				display: block
 				text-align: left
 
+.editorPropMenu
+	display: none
+	background-color: $background-dark
+	z-index: -1
+	width: 0
+	position: absolute
+	right: 0
+	opacity: 0
+	&.visible
+		display: block
+		z-index: 1
+		animation: slide 1s forwards
+
+@keyframes slide
+	100%
+		width: 100%
+		opacity: 100%
+	50%
+		opacity: 100%
+
+.editorPropMenuHeader
+	display: flex
+	flex-direction: row
+	justify-content: flex-end
+
 table
 	background-color: rgba($background-dark, 0.2)
 	border-collapse: collapse
@@ -242,6 +268,14 @@ table
 	transition: transform 0.2s ease
 	&.active
 		transform: rotate(90deg)
+
+.warningIcon
+	display: inline-block
+	width: 28px
+	height: 27px
+	background-image: url("../images/warning.svg")
+	background-repeat: no-repeat
+	margin: 8px 0 8px 0
 
 .vbox
 	display: flex

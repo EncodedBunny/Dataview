@@ -33,11 +33,6 @@
 {% block scripts %}
 	<script type="text/javascript" src="/javascripts/dataflowEditor.js"></script>
 	<script type="text/javascript">
-		let experiments = {{ experiments|json_encode|raw }};
-		loadDataflowMenuNodes({{ registeredNodes|json_encode|raw }});
-		
-		let root = document.getElementById("experimentsGroupContainer");
-		
 		const baseForm = {
 			"name": {"type": "textbox", "isTitled": true}
 		};

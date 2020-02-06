@@ -32,6 +32,7 @@ class Dataflow {
 	constructor(fileStructure){
 		this.flowTree = [];
 		this.structure = {nodes: [], connections: [], transform: [1, 0, 0, 1, 0, 0]};
+		this._registeredNodes = {};
 		
 		if(fileStructure)
 			this.loadFileStructure(fileStructure);
@@ -46,9 +47,9 @@ class Dataflow {
 		return false;
 	}
 	
-	activate(){
+	async activate(){
 		for(const node of this.flowTree[0])
-			node.activate();
+			await node.activate();
 	}
 	
 	loadFileStructure(fileStructure){
@@ -60,7 +61,7 @@ class Dataflow {
 			if(!Dataflow._checkFileArray(metaNode,DF_FILE_NODE_PROPERTIES+1)) continue;
 			let position = metaNode[DF_FILE_NODE_POSITION], props = metaNode[DF_FILE_NODE_PROPERTIES];
 			if(!Dataflow._checkFileArray(position,DF_FILE_POSITION_Y+1)) continue;
-			let node = Dataflow.createNode(metaNode[DF_FILE_NODE_PATH], position[DF_FILE_POSITION_X],
+			let node = this.createNode(metaNode[DF_FILE_NODE_PATH], position[DF_FILE_POSITION_X],
 				position[DF_FILE_POSITION_Y], props);
 			if(!node) continue;
 			indexConversion[index] = this.addNode(node);
@@ -113,6 +114,33 @@ class Dataflow {
 		return this._evaluateDeepness(node);
 	}
 	
+	registerNode(title, category, inputLabels, outputLabels, workerFunction, defaultProperties){
+		let cat = Dataflow._cleanString(category);
+		let t = Dataflow._cleanString(title);
+		if(!this._registeredNodes.hasOwnProperty(cat)) this._registeredNodes[cat] = {name: category, nodes: {}};
+		if(!this._registeredNodes[cat].nodes.hasOwnProperty(t)){
+			let prop = defaultProperties || {};
+			if(!prop.hasOwnProperty("name"))
+				prop.name = title;
+			this._registeredNodes[cat].nodes[t] = {title: title, category: category, inputLabels: inputLabels, outputLabels: outputLabels, workerFunction: workerFunction, defaultProperties: prop};
+			return cat + "/" + t;
+		}
+		return "";
+	}
+	
+	createNode(path, x, y, properties){
+		let splitPath = path.split("/");
+		if(splitPath.length !== 2) return undefined;
+		let category = splitPath[0], nodeTitle = splitPath[1];
+		if((!this._registeredNodes.hasOwnProperty(category)
+			|| !this._registeredNodes[category].nodes.hasOwnProperty(nodeTitle))
+			&& (!Dataflow._registeredNodes.hasOwnProperty(category)
+				|| !Dataflow._registeredNodes[category].nodes.hasOwnProperty(nodeTitle))) return undefined;
+		let nodeSpec = this._registeredNodes.hasOwnProperty(category) ? this._registeredNodes[category].nodes[nodeTitle]
+			|| Dataflow._registeredNodes[category].nodes[nodeTitle] : Dataflow._registeredNodes[category].nodes[nodeTitle];
+		return new Node(nodeSpec.inputLabels.length, nodeSpec.outputLabels.length, x, y, nodeSpec.workerFunction, path, properties);
+	}
+	
 	/**
 	 * Generates a JSON object compliant with the dataflow file format defined in the beginning of this file that contains
 	 * the current structure of this Dataflow object
@@ -136,6 +164,19 @@ class Dataflow {
 	}
 	
 	get webStructure(){
+		this.structure.registeredNodes = this._registeredNodes;
+		// for(const cat of Object.keys(this._registeredNodes)){
+		// 	this.structure.registeredNodes[cat] = {name: this._registeredNodes[cat].name, nodes: {}};
+		// 	for(const node of Object.keys(this._registeredNodes[cat].nodes)){
+		// 		let n = this._registeredNodes[cat][node];
+		// 		let webNode = {};
+		// 		for(const key of Object.keys(n)){
+		// 			if(key !== "workerFunction")
+		// 				webNode[key] = n[key];
+		// 		}
+		// 		this.structure.registeredNodes[cat][node] = webNode;
+		// 	}
+		// }
 		this.structure.nodes = [];
 		this.structure.connections = [];
 		this._iterateNodes(node => {
@@ -216,12 +257,15 @@ class Dataflow {
 	
 	// TODO: Add support for undefined number of inputs
 	// TODO: Add default properties
-	static registerNode(title, category, inputLabels, outputLabels, workerFunction, defaultProperties){
+	static registerGlobalNode(title, category, inputLabels, outputLabels, workerFunction, defaultProperties){
 		let cat = Dataflow._cleanString(category);
 		let t = Dataflow._cleanString(title);
 		if(!Dataflow._registeredNodes.hasOwnProperty(cat)) Dataflow._registeredNodes[cat] = {name: category, nodes: {}};
 		if(!Dataflow._registeredNodes[cat].nodes.hasOwnProperty(t)){
-			Dataflow._registeredNodes[cat].nodes[t] = {title: title, category: category, inputLabels: inputLabels, outputLabels: outputLabels, workerFunction: workerFunction, defaultProperties: defaultProperties || {}};
+			let prop = defaultProperties || {};
+			if(!prop.hasOwnProperty("name"))
+				prop.name = title;
+			Dataflow._registeredNodes[cat].nodes[t] = {title: title, category: category, inputLabels: inputLabels, outputLabels: outputLabels, workerFunction: workerFunction, defaultProperties: prop};
 			return cat + "/" + t;
 		}
 		return "";
@@ -234,15 +278,6 @@ class Dataflow {
 		if(!Dataflow._registeredNodes.hasOwnProperty(category) || !Dataflow._registeredNodes[category].nodes.hasOwnProperty(nodeTitle)) return false;
 		delete Dataflow._registeredNodes[category].nodes[t];
 		return true;
-	}
-	
-	static createNode(path, x, y, properties){
-		let splitPath = path.split("/");
-		if(splitPath.length !== 2) return undefined;
-		let category = splitPath[0], nodeTitle = splitPath[1];
-		if(!Dataflow._registeredNodes.hasOwnProperty(category) || !Dataflow._registeredNodes[category].nodes.hasOwnProperty(nodeTitle)) return undefined;
-		let nodeSpec = Dataflow._registeredNodes[category].nodes[nodeTitle];
-		return new Node(nodeSpec.inputLabels.length, nodeSpec.outputLabels.length, x, y, nodeSpec.workerFunction, path, properties || nodeSpec.defaultProperties);
 	}
 	
 	static createNodeFromSpec(nodeSpec, x, y, properties){
@@ -268,17 +303,35 @@ class Dataflow {
 	}
 }
 Dataflow._registeredNodes = {};
-Dataflow.registerNode("Constant Value","Inputs",[],["value"],() => {
-	return [3];
+Dataflow.registerGlobalNode("Constant Value","Inputs",[],["value"],(input, props) => {
+	return [Number.isInteger(props.value) ? Number.parseInt(props.value) : Number.parseFloat(props.value)];
+},{value: 0});
+Dataflow.registerGlobalNode("Random Float","Inputs",[],["value"],() => {
+	return [Math.random()];
 });
-Dataflow.registerNode("Graph","Output",["y"],[],() => {
-	return [];
-});
-Dataflow.registerNode("Sum","Math",["x", "y"],["result"],(input) => {
+Dataflow.registerGlobalNode("Sum","Math",["x", "y"],["x+y"],(input) => {
 	return [input[0]+input[1]];
 });
-Dataflow.registerNode("Another Node","Math",["1", "2", "3"],["out"],(input) => {
-	return [input[0]+input[1]+input[2]];
+Dataflow.registerGlobalNode("Subtract","Math",["x", "y"],["x-y"],(input) => {
+	return [input[0]-input[1]];
+});
+Dataflow.registerGlobalNode("Multiply","Math",["x", "y"],["x*y"],(input) => {
+	return [input[0]*input[1]];
+});
+Dataflow.registerGlobalNode("Divide","Math",["x", "y"],["x/y"],(input) => {
+	return [input[0]/input[1]];
+});
+Dataflow.registerGlobalNode("Exponentiate","Math",["x", "y"],["x^y"],(input) => {
+	return [input[0]**input[1]];
+});
+Dataflow.registerGlobalNode("Round","Math",["float"],["integer"],(input) => {
+	return [Math.round(input[0])];
+});
+Dataflow.registerGlobalNode("Floor","Math",["float"],["integer"],(input) => {
+	return [Math.floor(input[0])];
+});
+Dataflow.registerGlobalNode("Ceil","Math",["float"],["integer"],(input) => {
+	return [Math.ceil(input[0])];
 });
 
 class Node {
@@ -289,6 +342,8 @@ class Node {
 		this.y = y;
 		this.path = path;
 		this.in = [];
+		let i = this.inputNumber;
+		while(i--) this.in[i] = undefined;
 		this.out = [];
 		this.inputSlots = {};
 		this.outputSlots = [];
@@ -313,7 +368,7 @@ class Node {
 		return false;
 	}
 	
-	activate(){
+	async activate(){
 		let ready = true;
 		for(let i = 0; i < this.in.length; i++)
 			if(this.in[i] === undefined) {
@@ -321,7 +376,14 @@ class Node {
 				break;
 			}
 		if(ready){
-			let out = this.worker(this.in);
+			for(let i of this.in)
+				if(typeof i !== "number")
+					return false;
+			let out;
+			if(this.worker[Symbol.toStringTag] === "AsyncFunction")
+				out = await this.worker(this.in, this.properties);
+			else
+				out = this.worker(this.in, this.properties);
 			if(out.length !== this.outputSlots.length) return false;
 			for(let i = 0; i < this.outputSlots.length; i++) {
 				this.out[i] = out[i];

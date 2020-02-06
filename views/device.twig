@@ -39,9 +39,7 @@
 				let configureWindow = displayWindow("Configure Sensor", 450, createForm(sensorLayout, "add sensor", (extraData) => {
 					socket.emit("addSensor", {deviceID: "{{ deviceID }}", sensorName: data.name, extraData: extraData}, (id) => {
 						if(id) {
-							graphs[id] = {graph: createSensorContainer(data.name, id), x: 0, nodePath: Dataflow.registerNode(data.name + "(" + device.name + ")", "Sensors", [], ["value"], () => {
-								return [0];
-							})};
+							graphs[id] = {graph: createSensorContainer(data.name, id), x: 0, nodePath: ""};
 						} else
 							alert("An error has occurred");
 						closeWindow(configureWindow);

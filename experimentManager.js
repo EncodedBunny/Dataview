@@ -9,20 +9,26 @@ const measurementTypes = {
 				isTitled: true,
 				title: "Time Limit"
 			}
-		}
+		},
+		createTask: function (data, experiment, callback) {}
 	},
 	"Cyclic": {
 		form: {
-			"cycleLength": {
-				type: "textbox",
-				isTitled: true,
-				title: "Cycle Duration"
-			},
 			"maxCycles": {
 				type: "textbox",
 				isTitled: true,
 				title: "Cycle Count"
 			}
+		},
+		createTask: function (data, frequency, experiment, callback) {
+			experiment._measurementTask.data = 0;
+			return setInterval(data.maxCycles > 0 ? () => {
+				if(experiment._measurementTask.data < data.maxCycles) {
+					callback();
+					experiment._measurementTask.data++;
+				} else
+					experiment.cancelActiveMeasurement();
+			} : callback, frequency);
 		}
 	},
 	"Signal Limited": {
@@ -32,11 +38,12 @@ const measurementTypes = {
 				isTitled: true,
 				title: "Watcher Node Name"
 			}
-		}
+		},
+		createTask: function (data, experiment, callback) {}
 	}
 };
 
-module.exports = function(deviceManager) {
+module.exports = function(deviceManager, driverManager) {
 	let module = {};
 	let experiments = {};
 	
@@ -73,9 +80,39 @@ module.exports = function(deviceManager) {
 		return res;
 	};
 	
+	module.setExperimentMeasurement = function(id, type, frequency, measurementData){
+		if(experiments[id] && measurementTypes[type])
+			return experiments[id].setMeasurementType(type, frequency, measurementData);
+		return false;
+	};
+	
 	module.updateExperimentDataflow = function(id, dataflowStructure){
 		if(experiments[id])
 			return experiments[id].setDataflowStructure(dataflowStructure);
+		return false;
+	};
+	
+	module.beginExperiment = function(id){
+		if(experiments[id])
+			return experiments[id].beginMeasurement();
+		return false;
+	};
+	
+	module.stopExperiment = function(id){
+		if(experiments[id])
+			return experiments[id].cancelActiveMeasurement();
+		return false;
+	};
+	
+	module.addGraphToExperiment = function(id, title, xLbl, yLbl){
+		if(experiments[id])
+			return experiments[id].addGraph(title, xLbl, yLbl);
+		return false;
+	};
+	
+	module.listenToExperiment = function(id, listenerID, listener){
+		if(experiments[id])
+			return experiments[id].addListener(listenerID, listener);
 		return false;
 	};
 	
@@ -86,14 +123,26 @@ module.exports = function(deviceManager) {
 			this._name = name;
 			this._sensors = {};
 			this._dataflow = new Dataflow(dataflowStructure);
-			this._graphs = [];
+			this._graphs = {};
 			this._measurement = undefined;
+			this._measurementTask = undefined;
+			this._listeners = {};
+			
+			this._dataflow.registerNode("Measurement Start","Time",[],["time"],() => {
+				return [Number.parseInt(this._measurement.start)];
+			});
 		}
 		
 		addSensor(deviceID, sensorID){
 			if(this._sensors[sensorID]) return false;
-			if(deviceManager.getSensor(deviceID, sensorID)) {
+			let dev = deviceManager.getDevice(deviceID);
+			let sen = deviceManager.getSensor(deviceID, sensorID);
+			if(dev && sen) {
 				this._sensors[sensorID] = deviceID; // TODO: Make sub arrays of device IDs
+				this._dataflow.registerNode(sen.type + " (" + dev.name + ")","Sensors",[],["time", "value"],async () => {
+					let x = await driverManager.getSensorValue(dev.driver, deviceID, sensorID);
+					return [Date.now(), x];
+				});
 				return true;
 			}
 			return false;
@@ -111,24 +160,90 @@ module.exports = function(deviceManager) {
 			return true;
 		}
 		
-		addGraph(title, xLbl, yLbl, graphID){
+		addGraph(title, xLbl, yLbl){
+			if(typeof title !== "string" || title.length <= 0 || this._graphs.hasOwnProperty(title)) return false;
+			
 			let graph = new Graph(title, xLbl, yLbl);
-			let id = graphID || uuid();
-			this._graphs[id] = graph;
+			this._graphs[title] = graph;
 			
-			let node = Dataflow.createNodeFromSpec({inputLabels: ["x", "y"], outputLabels: [], workerFunction: (input) => {
-					graph.addData({x: input[0], y: input[1]});
-					return [];
-				}},0,0,{"graph": id});
-			
-			this._dataflow.addNode(node);
+			this._dataflow.registerNode(title + "graph","Graph",["x", "y"],[],(input) => {
+				let point = {x: input[0], y: input[1]};
+				graph.addData(point);
+				for(const listener of Object.values(this._listeners))
+					listener(title, point);
+				return [];
+			});
+			return true;
 		}
 		
 		loadFromFile(fileStructure){
 			for(const sensor of fileStructure.sensors)
 				this._sensors.push({sensor});
 			for(const g of fileStructure.graphs)
-				this.addGraph(g.title, g.axis.x, g.axis.y, g.id);
+				this.addGraph(g.title, g.axis.x, g.axis.y);
+		}
+		
+		setMeasurementType(measurement, frequency, measurementData){
+			this._measurement = {
+				type: measurement,
+				frequency: frequency,
+				data: measurementData,
+				start: -1
+			};
+			if(this._measurementTask !== undefined)
+				this.cancelActiveMeasurement();
+			this._measurementTask = {};
+			return true;
+		}
+		
+		beginMeasurement(){
+			if(this._measurement !== undefined && this._measurementTask !== undefined && this._measurementTask.task === undefined){
+				this._measurement.start = Date.now();
+				this._measurementTask.task = measurementTypes[this._measurement.type].createTask(this._measurement.data, this._measurement.frequency, this, () => {
+					this._dataflow.activate().catch(err => {
+						console.log("At " + Date.now() + " an error occurred while trying to activate a dataflow:", err);
+					});
+				});
+				return true;
+			}
+			return false;
+		}
+		
+		cancelActiveMeasurement(){
+			if(this._measurementTask !== undefined) {
+				clearInterval(this._measurementTask.task);
+				this._measurementTask = undefined;
+				return true;
+			}
+			return false;
+		}
+		
+		addListener(id, listener){
+			if(id !== undefined && typeof listener === "function" && !this.hasListener(id)){
+				this._listeners[id] = listener;
+				return true;
+			}
+			return false;
+		}
+		
+		hasListener(id){
+			return this._listeners.hasOwnProperty(id);
+		}
+		
+		removeListener(id){
+			if(this.hasListener(id)) {
+				delete this._listeners[id];
+				return true;
+			}
+			return false;
+		}
+		
+		get measurementType(){
+			return this._measurement ? this._measurement.type : undefined;
+		}
+		
+		get isMeasuring(){
+			return this._measurement !== undefined && this._measurementTask !== undefined && this._measurementTask.task !== undefined;
 		}
 		
 		get dataflow(){
@@ -143,16 +258,36 @@ module.exports = function(deviceManager) {
 			return this._sensors;
 		}
 		
-		get graphs(){
+		get graphs() {
 			return this._graphs;
 		}
 		
 		get webInfo(){
-			let res = {name: this.name, dataflow: this.dataflow.webStructure, graphs: this.graphs};
+			let res = {
+				name: this.name,
+				dataflow: this.dataflow.webStructure,
+				measurement: {
+					type: this.measurementType,
+					isActive: this.isMeasuring,
+					frequency: this._measurement ? this._measurement.frequency : undefined,
+					data: this._measurement ? this._measurement.data : undefined
+				},
+			};
+			let graphs = [];
+			for(const title of Object.keys(this._graphs)){
+				let graph = this._graphs[title];
+				graphs.push({title: title, axisLabels: graph.axisLabels, data: graph.getDataPoints(10)});
+			}
+			res.graphs = graphs;
 			let sensors = [];
 			for(const sensorID in this.sensors)
 				if(this.sensors.hasOwnProperty(sensorID))
-					sensors.push({name: deviceManager.getSensor(this.sensors[sensorID], sensorID).type, id: sensorID, device: deviceManager.getDevice(this.sensors[sensorID]).name, deviceID: this.sensors[sensorID]});
+					sensors.push({
+						name: deviceManager.getSensor(this.sensors[sensorID], sensorID).type,
+						id: sensorID,
+						device: deviceManager.getDevice(this.sensors[sensorID]).name,
+						deviceID: this.sensors[sensorID]
+					});
 			res.sensors = sensors;
 			return res;
 		}
@@ -175,14 +310,14 @@ class Graph {
 	
 	addData(dataPoint){
 		if(!dataPoint || dataPoint.x === undefined || dataPoint.y === undefined) return false;
-		data.push(dataPoint);
+		this.data.push(dataPoint);
 		for(const listener of this._listeners)
 			listener(dataPoint);
 		return true;
 	}
 	
 	getDataPoints(number){
-		return Number.isInteger(number) ? data.slice(-Math.abs(number)) : this.data;
+		return Number.isInteger(number) ? (this.data.length >= Math.abs(number) ? this.data.slice(-Math.abs(number)) : this.data) : this.data;
 	}
 	
 	addListener(listener){

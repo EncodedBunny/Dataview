@@ -110,20 +110,25 @@ function _saveChanges(sync){
 }
 
 function attachDevice(device, deviceID) {
-	if(!device || !device.driver || !device.name || !device.extraData || !drivers[device.driver]) return false;
+	if(!device || !device.driver || !device.extraData || !drivers[device.driver]) return false;
 	if(drivers[device.driver].registerDevice(deviceID, device.extraData))
 		return drivers[device.driver].addListener(deviceID, device.listener);
 	return false;
 }
 
-function attachSensor(driver, deviceID, extraData){
+function attachSensor(driver, deviceID, extraData, sensorID){
 	if(!driver || !deviceID || !extraData || !drivers[driver]) return -1;
-	return drivers[driver].registerSensor(deviceID, extraData);
+	return drivers[driver].registerSensor(deviceID, extraData, sensorID);
 }
 
-function detachSensor(device, deviceID, sensorID){
-	if(!drivers[device.driver] || !device.sensors[sensorID]) return false;
-	return drivers[device.driver].unregisterSensor(deviceID, device.sensors[sensorID].id);
+function detachSensor(driver, deviceID, sensorID){
+	if(!drivers[driver]) return false;
+	return drivers[driver].unregisterSensor(deviceID, sensorID);
+}
+
+function getSensorValue(driver, deviceID, sensorID){
+	if(!drivers[driver]) return undefined;
+	return drivers[driver].getSensorValue(deviceID, sensorID);
 }
 
 /*setInterval(_saveChanges, 5 * 60 * 1000);
@@ -133,5 +138,5 @@ process.on("exit", () => {
 });*/
 
 module.exports = {
-	loadDriver, installDriver, isDriverLoaded, getDriversForms, getInstalledDrivers, formattedNameToBaseName, baseNameToFormattedName, getDriversSensorForms, getDeviceSensorLayout, attachSensor, attachDevice, detachSensor
+	loadDriver, installDriver, isDriverLoaded, getDriversForms, getInstalledDrivers, formattedNameToBaseName, baseNameToFormattedName, getDriversSensorForms, getDeviceSensorLayout, attachSensor, attachDevice, detachSensor, getSensorValue
 };

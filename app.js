@@ -7,10 +7,11 @@ module.exports = function(port){
 	const sassMiddleware = require('node-sass-middleware');
 	const http = require('http');
 	const url = require("url");
+	const favicon = require('serve-favicon');
 
 	const driverManager = require('./driverManager');
 	const deviceManager = require('./deviceManager')(driverManager);
-	const experimentManager = require('./experimentManager')(deviceManager);
+	const experimentManager = require('./experimentManager')(deviceManager, driverManager);
 
 	const indexRouter = require('./routes/index');
 	const usersRouter = require('./routes/users');
@@ -36,6 +37,7 @@ module.exports = function(port){
 		includePaths: path.join(__dirname, 'node_modules')
 	}));
 	app.use(express.static(path.join(__dirname, 'public')));
+	app.use(favicon(path.join(__dirname, "public", "images", "favicon.ico")));
 
 	app.use('/', indexRouter);
 	app.use('/users', usersRouter);
@@ -109,9 +111,19 @@ module.exports = function(port){
 		linkFunction("addExperiment", experimentManager.addExperiment,["name"]);
 		linkFunction("getExperiment", experimentManager.getExperiment,["id"]);
 		linkFunction("getExperiments", experimentManager.getExperiments);
+		linkFunction("setExperimentMeasurement", experimentManager.setExperimentMeasurement,["id", "type", "frequency", "measurementData"]);
 		linkFunction("updateExperimentDataflow", experimentManager.updateExperimentDataflow,["id", "dataflowStructure"]);
 		linkFunction("addSensorToExperiment", experimentManager.addSensorToExperiment,["experimentID", "deviceID", "sensorID"]);
 		linkFunction("removeSensorFromExperiment", experimentManager.removeSensorFromExperiment, ["experimentID", "sensorID"]);
+		linkFunction("beginExperiment", experimentManager.beginExperiment, ["id"]);
+		linkFunction("stopExperiment", experimentManager.stopExperiment, ["id"]);
+		linkFunction("addGraphToExperiment", experimentManager.addGraphToExperiment,["experimentID", "title", "xLbl", "yLbl"]);
+		linkFunction("listenToExperiment", experimentManager.listenToExperiment,["id", "listenerID", "listener"],{
+			listenerID: socket.id,
+			listener: (title, point) => {
+				socket.emit("graphData", {title: title, point: point});
+			}
+		});
 		
 		// TODO: Temporary fix, final fix will be to create a single manager that uses UUID namespaces
 		socket.on("getDevicesAndExperiments", (res) => {

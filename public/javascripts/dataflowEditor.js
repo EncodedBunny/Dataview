@@ -1,13 +1,14 @@
 class Dataflow {
 	constructor(structure){
 		this.struct = {nodes: [], transform: [1, 0, 0, 1, 0, 0]};
+		this._registeredNodes = {};
 		
 		if(structure){
 			let indexConversion = [];
 			
 			for(const index in structure.nodes){
 				let metaNode = structure.nodes[index];
-				let node = Dataflow.createNode(metaNode.path, metaNode.position.x, metaNode.position.y);
+				let node = this.createNode(metaNode.path, metaNode.position.x, metaNode.position.y, metaNode.properties);
 				if(!node) continue;
 				this.struct.nodes.push(node);
 				indexConversion[index] = this.struct.nodes.length-1;
@@ -24,6 +25,7 @@ class Dataflow {
 			}
 			
 			this.struct.transform = structure.transform;
+			this._registeredNodes = structure.registeredNodes;
 		}
 	}
 	
@@ -40,14 +42,33 @@ class Dataflow {
 		return result;
 	}
 	
+	createNode(path, x, y, props){
+		let splitPath = path.split("/");
+		if(splitPath.length !== 2) return undefined;
+		let category = splitPath[0], nodeTitle = splitPath[1];
+		if((!this._registeredNodes.hasOwnProperty(category)
+			|| !this._registeredNodes[category].nodes.hasOwnProperty(nodeTitle))
+			&& (!Dataflow._registeredNodes.hasOwnProperty(category)
+				|| !Dataflow._registeredNodes[category].nodes.hasOwnProperty(nodeTitle))) return undefined;
+		let nodeSpec = this._registeredNodes.hasOwnProperty(category) ? this._registeredNodes[category].nodes[nodeTitle]
+			|| Dataflow._registeredNodes[category].nodes[nodeTitle] : Dataflow._registeredNodes[category].nodes[nodeTitle];
+		let node = new Node(nodeSpec.title,x || 0,y || 0, nodeSpec.inputLabels, nodeSpec.outputLabels,undefined,undefined, path,props || nodeSpec.defaultProperties);
+		node.size = {height: Math.max(fontHeight(DataflowEditor.titleFont, node.title) + 2 * DataflowEditor.titleVerticalSpacing, 15 + Math.max(node.numberOfInputs, node.numberOfOutputs) * (2 * DataflowEditor.slotCircleRadius + 2 * DataflowEditor.slotVerticalSpacing))};
+		return node;
+	}
+	
+	get registeredNodes(){
+		return this._registeredNodes;
+	}
+	
 	// TODO: Add support for undefined number of inputs
-	static registerNode(title, category, inputLabels, outputLabels, workerFunction){
+	static registerGlobalNode(title, category, inputLabels, outputLabels, props){
 		let cat = cleanString(category);
 		let t = cleanString(title);
 		if(!Dataflow._registeredNodes.hasOwnProperty(cat))
 			Dataflow._registeredNodes[cat] = {nodes: []};
 		if(!Dataflow._registeredNodes[cat].nodes.hasOwnProperty(t))
-			Dataflow._registeredNodes[cat].nodes[t] = {title: title, category: category, inputLabels: inputLabels, outputLabels: outputLabels};
+			Dataflow._registeredNodes[cat].nodes[t] = {title: title, category: category, inputLabels: inputLabels, outputLabels: outputLabels, defaultProperties: props};
 	}
 	
 	static unregisterNode(path){
@@ -61,26 +82,17 @@ class Dataflow {
 		if(Dataflow._registeredNodes[category].nodes.length <= 0) document.getElementById("editorMenu-addNode-content-" + category).setAttribute("style", "display: none");
 		return true;
 	}
-	
-	static createNode(path, x, y){
-		let splitPath = path.split("/");
-		if(splitPath.length !== 2) return undefined;
-		let category = splitPath[0], nodeTitle = splitPath[1];
-		if(!Dataflow._registeredNodes.hasOwnProperty(category) || !Dataflow._registeredNodes[category].nodes.hasOwnProperty(nodeTitle)) return undefined;
-		let nodeSpec = Dataflow._registeredNodes[category].nodes[nodeTitle];
-		let node = new Node(nodeSpec.title,x || 0,y || 0, nodeSpec.inputLabels, nodeSpec.outputLabels,undefined,undefined, path);
-		node.size = {height: Math.max(fontHeight(DataflowEditor.titleFont, node.title) + 2 * DataflowEditor.titleVerticalSpacing, 15 + Math.max(node.numberOfInputs, node.numberOfOutputs) * (2 * DataflowEditor.slotCircleRadius + 2 * DataflowEditor.slotVerticalSpacing))};
-		return node;
-	}
 }
 Dataflow._registeredNodes = {};
 
 class DataflowEditor{
-	constructor(dataflow, canvasObj){
+	constructor(dataflow, canvasObj, onSelect, onUnselect){
 		this.canvas = canvasObj;
 		this.dataflow = dataflow;
 		this.bindedRender = this._render.bind(this);
 		this.run = true;
+		
+		this.onUnselect = onUnselect;
 		
 		this.canvasCtx = this.canvas.getContext("2d");
 		this.transform = new DOMMatrix(this.dataflow.struct.transform);
@@ -92,7 +104,7 @@ class DataflowEditor{
 		/*
 			Credits to: https://stackoverflow.com/a/3368118
 		 */
-		this.canvasCtx.fillRoundRect = (x, y, width, height, radius) => {
+		this.canvasCtx.fillRoundRect = (x, y, width, height, radius, stroke) => {
 			if (typeof radius === "number") {
 				radius = {topRight: radius, bottomRight: radius, bottomLeft: radius, topLeft: radius};
 			} else {
@@ -114,6 +126,8 @@ class DataflowEditor{
 			this.canvasCtx.lineTo(x,y+radius.topLeft);
 			this.canvasCtx.quadraticCurveTo(x, y,x+radius.topLeft, y);
 			this.canvasCtx.closePath();
+			if(stroke === true)
+				this.canvasCtx.stroke();
 			this.canvasCtx.fill();
 		};
 		this.canvasCtx.fillCircle = (x, y, radius) => {
@@ -141,6 +155,7 @@ class DataflowEditor{
 		};
 		
 		this.activeSlotLine = undefined;
+		this.selectedNode = undefined;
 		
 		this.onMouseDown = (e) => {
 			updateMousePos(e);
@@ -193,6 +208,7 @@ class DataflowEditor{
 		};
 		this.onMouseUp = (e) => {
 			updateMousePos(e);
+			
 			if(dragTarget && typeof dragTarget.index === "number" && dragTarget.node instanceof Node) {
 				let transformedPoint = this.canvasCtx.transformedPoint(mouseX, mouseY);
 				for(let node of this.dataflow.struct.nodes){
@@ -205,13 +221,26 @@ class DataflowEditor{
 						break;
 					}
 				}
+			} else if(dragTarget && dragTarget instanceof Node){
+				if(dragTarget.position.x === dragAnchor.nodeAnchor.x && dragTarget.position.y === dragAnchor.nodeAnchor.y) {
+					if(this.selectedNode === dragTarget) {
+						this.deselectNode();
+					}else {
+						this.selectedNode = dragTarget;
+						if(typeof onSelect === "function")
+							onSelect(dragTarget);
+					}
+				}
+			} else{
+				if(this.selectedNode !== undefined)
+					this.deselectNode();
 			}
 			dragAnchor = undefined;
 			this.activeSlotLine = undefined;
 		};
 		this.onMouseWheel = (e) => {
 			let scale = 1;
-			if (e.deltaY < 0)
+			if(e.deltaY < 0)
 				scale *= e.deltaY * -0.25;
 			else
 				scale /= e.deltaY * 0.25;
@@ -235,8 +264,8 @@ class DataflowEditor{
 	}
 	
 	addNode(path, x, y){
-		let center = this.canvasCtx.transformedPoint(this.canvas.width/2, this.canvas.height/2);
-		let node = Dataflow.createNode(path, x,y || center.y);
+		let center = this.canvasCtx.transformedPoint(this.canvas.width/2,this.canvas.height/2);
+		let node = this.dataflow.createNode(path, x,y || center.y);
 		if(!node) return false;
 		if(x === undefined) node.position = {x: center.x-node.size.width/2};
 		node.position = {y: node.position.y-node.size.height/2};
@@ -262,11 +291,17 @@ class DataflowEditor{
 		this.canvas.removeEventListener('wheel', this.onMouseWheel);
 	}
 	
+	deselectNode(){
+		if(typeof this.onUnselect === "function")
+			this.onUnselect(this.selectedNode);
+		this.selectedNode = undefined;
+	}
+	
 	get fileStructure(){
 		let curTransform = this.canvasCtx.getTransform();
 		let struct = {nodes: [], connections: [], transform: [curTransform.a, curTransform.b, curTransform.c, curTransform.d, curTransform.e, curTransform.f]};
 		for(let node of this.dataflow.struct.nodes)
-			struct.nodes.push([node.nodePath, [node.position.x, node.position.y], node.properties]);
+			struct.nodes.push([node.nodePath, [node.position.x, node.position.y], node._properties]);
 		let n = 0;
 		for(let node of this.dataflow.struct.nodes) {
 			for (let x = 0; x < node.connections.length; x++)
@@ -305,7 +340,6 @@ class DataflowEditor{
 		this.canvasCtx.restore();
 		
 		// Render
-		// TODO: Invert rendering order
 		for(let node of this.dataflow.struct.nodes){
 			this.canvasCtx.save();
 			this.canvasCtx.strokeStyle = "#fafafa"; // TODO: Find better color
@@ -339,15 +373,17 @@ class DataflowEditor{
 			let node = this.dataflow.struct.nodes[i];
 			this.canvasCtx.fillStyle = "#404040";
 			this.canvasCtx.font = "24px Roboto";
-			let metrics = this.canvasCtx.measureText(node.title);
-			this.canvasCtx.fillRoundRect(node.position.x, node.position.y, node.size.width, node.size.height,15);
+			this.canvasCtx.lineWidth = DataflowEditor.highlightSize;
+			this.canvasCtx.strokeStyle = "#fafafa";
+			let metrics = this.canvasCtx.measureText(node._properties.name || node.title);
+			this.canvasCtx.fillRoundRect(node.position.x, node.position.y, node.size.width, node.size.height,15,this.selectedNode === node);
 			this.canvasCtx.fillStyle = node.numberOfInputs > 0 ? "#636363" : "#e09119";
 			this.canvasCtx.fillRoundRect(node.position.x, node.position.y, DataflowEditor.slotCircleArea, node.size.height,{bottomLeft: 15, topLeft: 15});
 			this.canvasCtx.fillStyle = node.numberOfOutputs > 0 ? "#636363" : "#9a19e0";
 			this.canvasCtx.fillRoundRect(node.position.x+node.size.width-DataflowEditor.slotCircleArea, node.position.y, DataflowEditor.slotCircleArea, node.size.height,{topRight: 15, bottomRight: 15});
 			this.canvasCtx.fillStyle = "#fafafa";
 			this.canvasCtx.textBaseline = "middle";
-			this.canvasCtx.fillText(node.title,node.position.x+node.size.width/2-Math.min(node.innerWidth, metrics.width)/2,node.position.y+node.size.height/2, node.innerWidth);
+			this.canvasCtx.fillText(node._properties.name || node.title,node.position.x+node.size.width/2-Math.min(node.innerWidth, metrics.width)/2,node.position.y+node.size.height/2, node.innerWidth);
 			
 			this._displaySlots(node.numberOfInputs, node.inputLabels, node.position.x, node.position.y, node.size.height);
 			this._displaySlots(node.numberOfOutputs, node.outputLabels, node.position.x+node.size.width-DataflowEditor.slotCircleArea, node.position.y, node.size.height,true);
@@ -406,14 +442,13 @@ DataflowEditor.slotLabelArea = 60;
 DataflowEditor.slotCircleArea = 25;
 DataflowEditor.titleSlotLabelAreaSpacing = 6;
 DataflowEditor.titleFont = "24px Roboto";
+DataflowEditor.highlightSize = 5;
 
 class Node {
-	constructor(title, x, y, inputs, outputs, inputNumber, workerFunction, path){
+	constructor(title, x, y, inputs, outputs, inputNumber, workerFunction, path, properties){
 		this.t = title;
 		this.x = x;
 		this.y = y;
-		this.innerWidth = fontWidth(DataflowEditor.titleFont, this.t);
-		this.width = this.innerWidth + 2*DataflowEditor.slotLabelArea + 2*DataflowEditor.slotLabelSpacing + 2*DataflowEditor.titleSlotLabelAreaSpacing + 2*DataflowEditor.slotCircleArea;
 		this.height = undefined;
 		this.inLbl = inputs || [];
 		this.outLbl = outputs || [];
@@ -424,6 +459,8 @@ class Node {
 		this.out = [];
 		this.inputSlots = {};
 		this.outputSlots = [];
+		this._properties = properties !== undefined ? Object.assign({}, properties) : {};
+		this._updateWidth();
 		this.worker = workerFunction;
 		for(let i = 0; i < this.outputNumber; i++) {
 			let self = {index: i, owner: this, connections: [], connect: (node, index) => {
@@ -465,6 +502,20 @@ class Node {
 			return true;
 		}
 		return false;
+	}
+	
+	setProperty(prop, value){
+		if(this._properties.hasOwnProperty(prop)){
+			let prev = this._properties[prop];
+			this._properties[prop] = value;
+			if(prop === "name" && value !== prev)
+				this._updateWidth();
+		}
+	}
+	
+	_updateWidth(){
+		this.innerWidth = fontWidth(DataflowEditor.titleFont, this._properties.name || this.t);
+		this.width = this.innerWidth + 2*DataflowEditor.slotLabelArea + 2*DataflowEditor.slotLabelSpacing + 2*DataflowEditor.titleSlotLabelAreaSpacing + 2*DataflowEditor.slotCircleArea;
 	}
 	
 	get title(){
