@@ -129,7 +129,7 @@ module.exports = function(deviceManager, driverManager) {
 			this._listeners = {};
 			
 			this._dataflow.registerNode("Measurement Start","Time",[],["time"],() => {
-				return [Number.parseInt(this._measurement.start)];
+				return [this._measurement.start];
 			});
 		}
 		
