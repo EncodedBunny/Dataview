@@ -21,17 +21,25 @@ module.exports = function (driverManager) {
 	};
 	
 	module.addSensor = function(deviceID, sensorName, extraData){
-		if(!sensorName) return -1;
+		if(!sensorName) return false;
 		let senName = sensorName.trim();
-		if(senName <= 0) return -1;
+		if(senName <= 0) return false;
 		let device = devices[deviceID];
-		if(!device) return -1;
+		if(!device) return false;
 		let id = uuid(); // TODO: Verify uniqueness with respect to all devices (or a faster alternative, maybe global UUIDs)
 		if(driverManager.attachSensor(device.driver, deviceID, extraData, id)){
-			device.sensors[id] = {type: senName, data: extraData, value: 0};
-			return id;
+			device.sensors[id] = {type: senName, data: extraData};
+			return true;
 		}
-		return undefined;
+		return false;
+	};
+	
+	module.configureSensor = function(deviceID, sensorID, extraData){
+		let device = devices[deviceID];
+		if(!device) return false;
+		let res = driverManager.configureSensor(device.driver, deviceID, sensorID, extraData);
+		if(res) device.sensors[sensorID].data = extraData;
+		return res;
 	};
 	
 	module.removeSensor = function(deviceID, sensorID){

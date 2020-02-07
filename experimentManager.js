@@ -128,8 +128,11 @@ module.exports = function(deviceManager, driverManager) {
 			this._measurementTask = undefined;
 			this._listeners = {};
 			
-			this._dataflow.registerNode("Measurement Start","Time",[],["time"],() => {
+			this._dataflow.registerNode("Measurement Start","Measurement",[],["time"],() => {
 				return [this._measurement.start];
+			});
+			this._dataflow.registerNode("Sample Number","Measurement",[],["number"],() => {
+				return [this._measurement.sample];
 			});
 		}
 		
@@ -188,7 +191,8 @@ module.exports = function(deviceManager, driverManager) {
 				type: measurement,
 				frequency: frequency,
 				data: measurementData,
-				start: -1
+				start: -1,
+				sample: 0
 			};
 			if(this._measurementTask !== undefined)
 				this.cancelActiveMeasurement();
@@ -200,6 +204,7 @@ module.exports = function(deviceManager, driverManager) {
 			if(this._measurement !== undefined && this._measurementTask !== undefined && this._measurementTask.task === undefined){
 				this._measurement.start = Date.now();
 				this._measurementTask.task = measurementTypes[this._measurement.type].createTask(this._measurement.data, this._measurement.frequency, this, () => {
+					this._measurement.sample++;
 					this._dataflow.activate().catch(err => {
 						console.log("At " + Date.now() + " an error occurred while trying to activate a dataflow:", err);
 					});

@@ -106,6 +106,7 @@ module.exports = function(port){
 		});
 		
 		linkFunction("addSensor", deviceManager.addSensor,["deviceID", "sensorName", "extraData"]);
+		linkFunction("configureSensor", deviceManager.configureSensor,["deviceID", "sensorID", "extraData"]);
 		linkFunction("removeSensor", deviceManager.removeSensor,["deviceID", "sensorID"],{deviceID: checkAndGetFromUrl("devices")});
 		
 		linkFunction("addExperiment", experimentManager.addExperiment,["name"]);

@@ -121,6 +121,11 @@ function attachSensor(driver, deviceID, extraData, sensorID){
 	return drivers[driver].registerSensor(deviceID, extraData, sensorID);
 }
 
+function configureSensor(driver, deviceID, sensorID, extraData){
+	if(!drivers[driver]) return false;
+	return drivers[driver].configureSensor(deviceID, sensorID, extraData);
+}
+
 function detachSensor(driver, deviceID, sensorID){
 	if(!drivers[driver]) return false;
 	return drivers[driver].unregisterSensor(deviceID, sensorID);
@@ -138,5 +143,5 @@ process.on("exit", () => {
 });*/
 
 module.exports = {
-	loadDriver, installDriver, isDriverLoaded, getDriversForms, getInstalledDrivers, formattedNameToBaseName, baseNameToFormattedName, getDriversSensorForms, getDeviceSensorLayout, attachSensor, attachDevice, detachSensor, getSensorValue
+	loadDriver, installDriver, isDriverLoaded, getDriversForms, getInstalledDrivers, formattedNameToBaseName, baseNameToFormattedName, getDriversSensorForms, getDeviceSensorLayout, attachSensor, attachDevice, configureSensor, detachSensor, getSensorValue
 };

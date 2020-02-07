@@ -6,10 +6,11 @@ management of multiple equipment through a web platform.
 
 ##### High priority infrastructure
 - [ ] Web interface
-    - [ ] Welcome screen (In progress :hourglass_flowing_sand:)
+    - [ ] Welcome screen
     - [x] Devices screen
     - [x] Sensors screen
-    - [ ] Experiments screen (In progress :hourglass_flowing_sand:)
+    - [x] Experiments screen
+    - [ ] Settings screen (In progress :hourglass_flowing_sand:)
 - [ ] JSON form specifier
     - [x] Basic form functionality
     - [ ] Events
@@ -21,19 +22,18 @@ management of multiple equipment through a web platform.
 - [ ] Dataflow based data processing
     - [x] Dataflow object
     - [x] Dataflow file structure
-    - [ ] Server side dataflow processor (In progress :hourglass_flowing_sand:)
+    - [x] Server side dataflow processor
     - [x] Client side dataflow editor
     - [x] Client to server dataflow exchange
     - [ ] Physical units for processed sensor data
+    - [ ] Logic flow control (In progress :hourglass_flowing_sand:)
+    - [ ] Output nodes (In progress :hourglass_flowing_sand:)
 - [ ] Graphs and other data display
-    - [ ] Time x Variable graph
-        - [ ] Scatter (In progress :hourglass_flowing_sand:)
-        - [ ] Line
     - [ ] Variable x Variable graph
         - [ ] Scatter
-        - [ ] Line
+        - [x] Line
         - [ ] Bar
-    - [ ] Sensor live raw data display (In progress :hourglass_flowing_sand:)
+    - [ ] Sensor live raw data display
     - [ ] Non-linear axis
 - [ ] User authentication
 - [ ] Database backend for data storage

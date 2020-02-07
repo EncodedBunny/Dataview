@@ -2,128 +2,71 @@
 
 {% block body %}
 	<h2>Device "{{ device.name }}"</h2>
-	<div class="devicesGroupContainer" id="sensorsGroupContainer"></div>
+	<div class="devicesGroupContainer" id="sensorsGroupContainer">
+		{% for id in device.sensors|keys %}
+			<div class="container" style="width: 300px; height: 300px">
+				<header>
+					<span class="centerText title">{{ device.sensors[id].type }}</span>
+				</header>
+				<div class="mainView">
+					{% for prop in device.sensors[id].data|keys %}
+						{% if prop|length > 0 and sensorLayout[prop].title is defined %}
+							<span>{{ sensorLayout[prop].title }}: {{ device.sensors[id].data[prop] }}</span>
+						{% endif %}
+					{% endfor %}
+				</div>
+				<footer class="footer">
+					<button class="dangerButton waves-light waves-button waves-float" onclick="removeSensor('{{ id }}')">Remove</button>
+					<button class="waves-light waves-button waves-float" onclick="reconfigureSensor('{{ id }}')">Configure</button>
+				</footer>
+			</div>
+		{% endfor %}
+		<div class="container placeholder" style="width: 300px; height: 300px;">
+			<div class="plusCircleButton" id="addSensor">
+				<span class="plusCircleText">+</span>
+			</div>
+		</div>
+	</div>
 {% endblock %}
 
 {% block scripts %}
 	<script type="text/javascript" src="/javascripts/dataflowEditor.js"></script>
 	<script type="text/javascript">
-		let root = document.getElementById("sensorsGroupContainer");
-		root.appendChild(createPlaceholderContainer(600, 400, "addSensor"));
 		let sensorLayout = {{ sensorLayout|json_encode|raw }};
-		let device = {{ device|json_encode|raw }};
-		let graphs = {};
-		for(const id of Object.keys(device.sensors))
-			graphs[id] = {graph: createSensorContainer(device.sensors[id].type, id), x: 0};
-		socket.emit("listenDevice");
-		socket.on("sensorData", (updates) => {
-			for(const id of Object.keys(updates)){
-				if(graphs[id]) {
-					graphs[id].graph.data.datasets[0].data.push(updates[id]);
-					graphs[id].graph.data.labels.push(graphs[id].x++);
-					if(graphs[id].graph.data.datasets[0].data.length > 11) {
-						graphs[id].graph.data.datasets[0].data.shift();
-						graphs[id].graph.data.labels.shift();
-					}
-					graphs[id].graph.update({animation: 0});
-				}
-			}
-		});
+		
 		Waves.init();
 		document.getElementById("addSensor").addEventListener("click", () => {
-			let temp = {
-				"name": {"type": "textbox", "isTitled": true, "title": "Sensor Name"}
-			};
-			let window = displayWindow("Add New Sensor", 450, createForm(temp, "next", (data) => {
+			let window = displayWindow("Add New Sensor", 450, createForm({
+				"name": {
+					"type": "textbox",
+					"isTitled": true,
+					"title": "Sensor Name"
+				}
+			}, "next", (data) => {
 				closeWindow(window);
-				let configureWindow = displayWindow("Configure Sensor", 450, createForm(sensorLayout, "add sensor", (extraData) => {
-					socket.emit("addSensor", {deviceID: "{{ deviceID }}", sensorName: data.name, extraData: extraData}, (id) => {
-						if(id) {
-							graphs[id] = {graph: createSensorContainer(data.name, id), x: 0, nodePath: ""};
-						} else
-							alert("An error has occurred");
-						closeWindow(configureWindow);
+				displayWindow("Configure Sensor", 450, createForm(sensorLayout, "add sensor", (extraData) => {
+					socket.emit("addSensor", {deviceID: "{{ deviceID }}", sensorName: data.name, extraData: extraData}, (res) => {
+						if(!res) alert("An error has occurred");
+						else reload();
 					});
 				}));
 			}));
 		});
 		
-		function createSensorContainer(name, id){
-			let container = createContainer(600, 400);
-			let title = document.createElement("span");
-			title.appendChild(document.createTextNode(name));
-			title.classList.add("centerText", "title");
-			container.header.appendChild(title);
-			let graphHolder = document.createElement("div");
-			graphHolder.classList.add("graphHolder");
-			let graphCanvas = document.createElement("canvas");
-			graphHolder.appendChild(graphCanvas);
-			container.mainView.appendChild(graphHolder);
-			let graph = new Chart(graphCanvas.getContext("2d"), {
-				scaleOverride : true,
-				scaleSteps : 10,
-				scaleStepWidth : 50,
-				scaleStartValue : 0,
-				type: 'line',
-				data: {
-					datasets: [{
-						fill: 'origin',
-						data: [],
-						borderColor: 'rgba(48, 63, 159, 1)',
-						borderWidth: 2,
-						pointBorderColor: 'rgba(48, 63, 159, 1)',
-						outerGlowColor: 'rgba(60, 78, 194, 1)',
-						outerGlowWidth: 5,
-						pointRadius: 1
-					}]
-				},
-				options: {
-					responsive: true,
-					scales: {
-						yAxes: [{
-							ticks: {
-							}
-						}],
-						xAxes: [{
-							display: true,
-							ticks: {
-								stepSize: 1,
-								maxTicksLimit: 10
-							}
-						}]
-					},
-					plugins: {
-						filler: {
-							propagate: true
-						}
-					},
-					legend: {
-						display: false
-					},
-					tooltips: {
-						enabled: false
-					},
-					animation: {
-						duration: 400
-					}
-				}
+		function reconfigureSensor(id){
+			displayWindow("Configure Sensor", 450, createForm(sensorLayout, "done", (extraData) => {
+				socket.emit("configureSensor", {deviceID: "{{ deviceID }}", sensorID: id, extraData: extraData}, (res) => {
+					if(!res) alert("An error has occurred");
+					else reload();
+				});
+			}));
+		}
+		
+		function removeSensor(id){
+			socket.emit("removeSensor", {sensorID: id}, (res) => {
+				if(!res) alert("An error has occurred");
+				else reload();
 			});
-			let removeButton = createButton("remove", "dangerButton");
-			removeButton.onclick = () => {
-				if(graphs[id]){
-					socket.emit("removeSensor", {sensorID: id}, (status) => {
-						if(status && graphs[id]){
-							root.removeChild(container);
-							graphs[id] = undefined;
-						}
-					});
-				}
-			};
-			container.footer.appendChild(removeButton);
-			let configureButton = createButton("configure");
-			container.footer.appendChild(configureButton);
-			root.insertBefore(container, root.lastChild);
-			return graph;
 		}
 	</script>
 {% endblock %}

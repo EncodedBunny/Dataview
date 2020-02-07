@@ -2,24 +2,50 @@
 
 {% block body %}
 	<h2>Devices</h2>
-	<div class="devicesGroupContainer" id="devicesGroupContainer"></div>
+	<div class="devicesGroupContainer" id="devicesGroupContainer">
+		{% for deviceData in devices %}
+			<div class="container" style="width: 300px; height: 300px">
+				<header>
+					<span class="centerText title">{{ deviceData.device.name }}</span>
+					<span class="centerText subtitle">{{ deviceData.device.type }}</span>
+				</header>
+				<div class="mainView"></div>
+				<footer class="footer">
+					<!--<button class="dangerButton waves-light waves-button waves-float" onclick="">Remove</button>-->
+					<button class="waves-light waves-button waves-float" onclick="enterSublink('{{ deviceData.id }}')">View</button>
+				</footer>
+			</div>
+		{% endfor %}
+		<div class="container placeholder" style="width: 300px; height: 300px;">
+			<div class="plusCircleButton" id="addDevice">
+				<span class="plusCircleText">+</span>
+			</div>
+		</div>
+	</div>
 {% endblock %}
 
 {% block scripts %}
 	<script type="text/javascript">
-		let root = document.getElementById("devicesGroupContainer");
-		root.appendChild(createPlaceholderContainer(300, 200, "addDevice"));
 		let deviceForms = {{ deviceForms|json_encode|raw }};
 		let installedDrivers = {{ installedDrivers|json_encode|raw }};
-		let devices = {{ devices|json_encode|raw }};
-		for(const deviceData of devices)
-			createDeviceContainer(deviceData.device.type, deviceData.device.name);
+		
 		let currentForm = deviceForms[installedDrivers[0]];
 		const baseForm = {
-			"name": {"type": "textbox", "isTitled": true},
-			"device": {"type": "list", "isTitled": true, "items": installedDrivers, "listeners": [{"event": "click", "callback": (e) => {
-				currentForm = deviceForms[e.target.value];
-			}}]}
+			"name": {
+				"type": "textbox",
+				"isTitled": true
+			},
+			"device": {
+				"type": "list",
+				"isTitled": true,
+				"items": installedDrivers,
+				"listeners": [{
+					"event": "click",
+					"callback": (e) => {
+						currentForm = deviceForms[e.target.value];
+					}
+				}]
+			}
 		};
 		Waves.init();
 		document.getElementById("addDevice").addEventListener("click", () => {
@@ -27,32 +53,14 @@
 				closeWindow(newDeviceWindow);
 				let configWindow = displayWindow("Add New " + baseDevice.device, 450, createForm(currentForm, "add device", (data) => {
 					socket.emit("addDevice", {name: baseDevice.name, type: baseDevice.device, extraData: data}, (uuid) => {
-						if(uuid) {
-							createDeviceContainer(baseDevice.device, baseDevice.name);
-							enterSublink(uuid);
-						} else
+						if(uuid) enterSublink(uuid);
+						else{
 							alert("An error occurred");
-						closeWindow(configWindow);
+							closeWindow(configWindow);
+						}
 					});
 				}));
 			}));
 		});
-		
-		function createDeviceContainer(type, name){
-			let container = createContainer(300, 200);
-			let title = document.createElement("span");
-			title.appendChild(document.createTextNode(name));
-			title.classList.add("centerText", "title");
-			container.header.appendChild(title);
-			let subtitle = document.createElement("span");
-			subtitle.appendChild(document.createTextNode(type));
-			subtitle.classList.add("centerText", "subtitle");
-			container.header.appendChild(subtitle);
-			let removeButton = createButton("remove", "dangerButton");
-			container.footer.appendChild(removeButton);
-			let configureButton = createButton("configure");
-			container.footer.appendChild(configureButton);
-			root.insertBefore(container, root.lastChild);
-		}
 	</script>
 {% endblock %}
