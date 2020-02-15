@@ -43,7 +43,7 @@ const measurementTypes = {
 	}
 };
 
-module.exports = function(deviceManager, driverManager) {
+module.exports = function(deviceManager, driverManager, fileManager) {
 	let module = {};
 	let experiments = {};
 	
@@ -104,9 +104,9 @@ module.exports = function(deviceManager, driverManager) {
 		return false;
 	};
 	
-	module.addGraphToExperiment = function(id, title, xLbl, yLbl){
+	module.addGraphToExperiment = function(id, title, xLbl, yLbl, saveType){
 		if(experiments[id])
-			return experiments[id].addGraph(title, xLbl, yLbl);
+			return experiments[id].addGraph(title, xLbl, yLbl, saveType);
 		return false;
 	};
 	
@@ -133,6 +133,9 @@ module.exports = function(deviceManager, driverManager) {
 			});
 			this._dataflow.registerNode("Sample Number","Measurement",[],["number"],() => {
 				return [this._measurement.sample];
+			});
+			this._dataflow.registerNode("Elapsed Time","Measurement",[],["number"],() => {
+				return [Date.now()-this._measurement.start];
 			});
 		}
 		
@@ -163,17 +166,21 @@ module.exports = function(deviceManager, driverManager) {
 			return true;
 		}
 		
-		addGraph(title, xLbl, yLbl){
+		addGraph(title, xLbl, yLbl, saveType){
 			if(typeof title !== "string" || title.length <= 0 || this._graphs.hasOwnProperty(title)) return false;
 			
-			let graph = new Graph(title, xLbl, yLbl);
+			let graph = new Graph(title, xLbl, yLbl, saveType);
+			if(this._measurement !== undefined && this._measurement.start >= 0)
+				graph.saveFile = fileManager.createGraphSave(this._name, this._measurement.start, graph, saveType);
 			this._graphs[title] = graph;
 			
-			this._dataflow.registerNode(title + "graph","Graph",["x", "y"],[],(input) => {
+			this._dataflow.registerNode(title + " Graph","Graph",["x", "y"],[],(input) => {
 				let point = {x: input[0], y: input[1]};
 				graph.addData(point);
 				for(const listener of Object.values(this._listeners))
 					listener(title, point);
+				if(graph.data.length >= 25)
+					Experiment._saveGraph(graph);
 				return [];
 			});
 			return true;
@@ -203,10 +210,13 @@ module.exports = function(deviceManager, driverManager) {
 		beginMeasurement(){
 			if(this._measurement !== undefined && this._measurementTask !== undefined && this._measurementTask.task === undefined){
 				this._measurement.start = Date.now();
+				
+				for(const graph of Object.values(this._graphs))
+					graph.saveFile = fileManager.createGraphSave(this._name, this._measurement.start, graph, graph.saveType);
 				this._measurementTask.task = measurementTypes[this._measurement.type].createTask(this._measurement.data, this._measurement.frequency, this, () => {
 					this._measurement.sample++;
 					this._dataflow.activate().catch(err => {
-						console.log("At " + Date.now() + " an error occurred while trying to activate a dataflow:", err);
+						console.error("At " + Date.now() + " an error occurred while trying to activate a dataflow:", err);
 					});
 				});
 				return true;
@@ -218,6 +228,10 @@ module.exports = function(deviceManager, driverManager) {
 			if(this._measurementTask !== undefined) {
 				clearInterval(this._measurementTask.task);
 				this._measurementTask = undefined;
+				for(let graph of Object.values(this._graphs)) {
+					Experiment._saveGraph(graph);
+					fileManager.endGraphSave(graph.saveFile, this._measurement.start);
+				}
 				return true;
 			}
 			return false;
@@ -241,6 +255,11 @@ module.exports = function(deviceManager, driverManager) {
 				return true;
 			}
 			return false;
+		}
+		
+		static _saveGraph(graph){
+			if(graph.data.length > 0)
+				graph.saveFile.write(graph.data.splice(0, graph.data.length));
 		}
 		
 		get measurementType(){
@@ -281,7 +300,7 @@ module.exports = function(deviceManager, driverManager) {
 			let graphs = [];
 			for(const title of Object.keys(this._graphs)){
 				let graph = this._graphs[title];
-				graphs.push({title: title, axisLabels: graph.axisLabels, data: graph.getDataPoints(10)});
+				graphs.push({title: title, axisLabels: graph.axisLabels});
 			}
 			res.graphs = graphs;
 			let sensors = [];
@@ -306,28 +325,30 @@ module.exports = function(deviceManager, driverManager) {
  *  the raw sensor data into meaningful graph data points
  */
 class Graph {
-	constructor(title, xLbl, yLbl){
-		this.data = [];
+	constructor(title, xLbl, yLbl, saveType){
+		this._data = [];
 		this._listeners = [];
 		this._title = title;
 		this._labels = {x: xLbl, y: yLbl};
+		this._saveType = saveType;
+		this._saveFile = undefined;
 	}
 	
 	addData(dataPoint){
 		if(!dataPoint || dataPoint.x === undefined || dataPoint.y === undefined) return false;
-		this.data.push(dataPoint);
+		this._data.push(dataPoint);
 		for(const listener of this._listeners)
 			listener(dataPoint);
 		return true;
 	}
 	
-	getDataPoints(number){
-		return Number.isInteger(number) ? (this.data.length >= Math.abs(number) ? this.data.slice(-Math.abs(number)) : this.data) : this.data;
-	}
-	
 	addListener(listener){
 		if(typeof listener === "function")
 			this._listeners.push(listener);
+	}
+	
+	get data(){
+		return this._data;
 	}
 	
 	get title(){
@@ -336,5 +357,18 @@ class Graph {
 	
 	get axisLabels(){
 		return this._labels;
+	}
+	
+	set saveFile(file){
+		if(this._saveFile === undefined)
+			this._saveFile = file;
+	}
+	
+	get saveFile(){
+		return this._saveFile;
+	}
+	
+	get saveType(){
+		return this._saveType;
 	}
 }

@@ -17,7 +17,7 @@
 		<button class="waves-button waves-float waves-ripple" onclick="displayMeasurementSelector()" style="margin-top: 14px">Configure</button>
 		<button class="waves-button waves-float waves-ripple" onclick="displayDataflowEditor()" style="margin-top: 14px; margin-left: 0">Edit Dataflow</button>
 		{% if experiment.measurement.isActive %}
-			<button class="waves-button waves-float waves-ripple dangerButton" onclick="" style="margin-top: 14px; margin-left: 0">Stop</button>
+			<button class="waves-button waves-float waves-ripple dangerButton" onclick="stopMeasurement()" style="margin-top: 14px; margin-left: 0">Stop</button>
 		{% else %}
 			<button class="waves-button waves-float waves-ripple greenButton" style="margin-top: 14px; margin-left: 0" {% if not experiment.measurement.type %}title="You must configure a measurement before starting one" disabled{% else %} onclick="beginMeasurement()"{% endif %}>Begin</button> <!-- TODO: Check if measurement is configured -->
 		{% endif %}
@@ -168,9 +168,15 @@
 					"type": "textbox",
 					"isTitled": true,
 					"title": "Y Axis Label"
+				},
+				"saveType": {
+					"type": "list",
+					"isTitled": true,
+					"title": "File Format",
+					"items": {{ fileTypes|json_encode|raw }}
 				}
 			}, "create", (data) => {
-				socket.emit("addGraphToExperiment", {experimentID: "{{ experimentID }}", title: data.title, xLbl: data.xLbl, yLbl: data.yLbl}, (res) => {
+				socket.emit("addGraphToExperiment", {experimentID: "{{ experimentID }}", title: data.title, xLbl: data.xLbl, yLbl: data.yLbl, saveType: data.saveType}, (res) => {
 					if(!res) alert("An error has occurred");
 					else reload();
 				});

@@ -11,12 +11,13 @@ module.exports = function(port){
 
 	const driverManager = require('./driverManager');
 	const deviceManager = require('./deviceManager')(driverManager);
-	const experimentManager = require('./experimentManager')(deviceManager, driverManager);
+	const fileManager = require("./fileManager")();
+	const experimentManager = require('./experimentManager')(deviceManager, driverManager, fileManager);
 
 	const indexRouter = require('./routes/index');
 	const usersRouter = require('./routes/users');
 	const devicesRouter = require('./routes/devices')(driverManager, deviceManager);
-	const experimentsRouter = require('./routes/experiments')(deviceManager, experimentManager);
+	const experimentsRouter = require('./routes/experiments')(deviceManager, experimentManager, fileManager);
 	const settingsRouter = require('./routes/settings');
 
 	let app = express();
@@ -118,7 +119,7 @@ module.exports = function(port){
 		linkFunction("removeSensorFromExperiment", experimentManager.removeSensorFromExperiment, ["experimentID", "sensorID"]);
 		linkFunction("beginExperiment", experimentManager.beginExperiment, ["id"]);
 		linkFunction("stopExperiment", experimentManager.stopExperiment, ["id"]);
-		linkFunction("addGraphToExperiment", experimentManager.addGraphToExperiment,["experimentID", "title", "xLbl", "yLbl"]);
+		linkFunction("addGraphToExperiment", experimentManager.addGraphToExperiment,["experimentID", "title", "xLbl", "yLbl", "saveType"]);
 		linkFunction("listenToExperiment", experimentManager.listenToExperiment,["id", "listenerID", "listener"],{
 			listenerID: socket.id,
 			listener: (title, point) => {
