@@ -2,18 +2,20 @@
 
 {% block body %}
 	<h2>Device "{{ device.name }}"</h2>
-	<div class="devicesGroupContainer" id="sensorsGroupContainer">
+	<h3>Sensors</h3>
+	<div class="devicesGroupContainer highlighted" id="sensorsGroupContainer">
 		{% for id in device.sensors|keys %}
-			<div class="container" style="width: 300px; height: 300px">
+			<div class="container" style="width: 19.2%; height: 250px">
 				<header>
-					<span class="centerText title">{{ device.sensors[id].type }}</span>
+					<span class="centerText title">{{ device.sensors[id].name }}</span>
 				</header>
 				<div class="mainView">
-					{% for prop in device.sensors[id].data|keys %}
+					<span>Location: {{ device.sensors[id].loc.value }}{% if device.sensors[id].loc.type is defined %} ({{ device.sensors[id].loc.type }}){% endif %}</span>
+					{#{% for prop in device.sensors[id].data|keys %}
 						{% if prop|length > 0 and sensorLayout[prop].title is defined %}
 							<span>{{ sensorLayout[prop].title }}: {{ device.sensors[id].data[prop] }}</span>
 						{% endif %}
-					{% endfor %}
+					{% endfor %}#}
 				</div>
 				<footer class="footer">
 					<button class="dangerButton waves-light waves-button waves-float" onclick="removeSensor('{{ id }}')">Remove</button>
@@ -21,8 +23,35 @@
 				</footer>
 			</div>
 		{% endfor %}
-		<div class="container placeholder" style="width: 300px; height: 300px;">
+		<div class="container placeholder" style="width: 19.2%; height: 250px;">
 			<div class="plusCircleButton" id="addSensor">
+				<span class="plusCircleText">+</span>
+			</div>
+		</div>
+	</div>
+	<h3>Actuators</h3>
+	<div class="devicesGroupContainer highlighted" id="actuatorsGroupContainer">
+		{% for id in device.actuators|keys %}
+			<div class="container" style="width: 19.2%; height: 250px">
+				<header>
+					<span class="centerText title">{{ device.actuators[id].name }}</span>
+				</header>
+				<div class="mainView">
+					<span>Location: {{ device.actuators[id].loc.value }}{% if device.actuators[id].loc.type is defined %} ({{ device.actuators[id].loc.type }}){% endif %}</span>
+					{#{% for prop in device.sensors[id].data|keys %}
+						{% if prop|length > 0 and sensorLayout[prop].title is defined %}
+							<span>{{ sensorLayout[prop].title }}: {{ device.sensors[id].data[prop] }}</span>
+						{% endif %}
+					{% endfor %}#}
+				</div>
+				<footer class="footer">
+					<button class="dangerButton waves-light waves-button waves-float" onclick="removeSensor('{{ id }}')">Remove</button>
+					<button class="waves-light waves-button waves-float" onclick="reconfigureActuator('{{ id }}')">Configure</button>
+				</footer>
+			</div>
+		{% endfor %}
+		<div class="container placeholder" style="width: 19.2%; height: 250px;">
+			<div class="plusCircleButton" id="addActuator">
 				<span class="plusCircleText">+</span>
 			</div>
 		</div>
@@ -30,36 +59,87 @@
 {% endblock %}
 
 {% block scripts %}
-	<script type="text/javascript" src="/javascripts/dataflowEditor.js"></script>
 	<script type="text/javascript">
-		let sensorLayout = {{ sensorLayout|json_encode|raw }};
+		let device = {{ device|json_encode|raw }};
+		let baseForm = {
+			"name": {
+				"type": "textbox",
+				"isTitled": true
+			}
+		};
+		let locs = {{ availableLocations|json_encode|raw }};
+		let locLabels = {{ locationLabels|json_encode|raw }};
+		if(!Array.isArray(locs)){
+			baseForm.locType = {
+				type: "list",
+				isTitled: true,
+				title: locLabels.locationTypeTitle,
+				items: Object.keys(locs)
+			};
+		}
+		let locLayout = {
+			loc: {
+				type: "list",
+				isTitled: true,
+				title: locLabels.locationTitle
+			}
+		};
 		
-		Waves.init();
-		document.getElementById("addSensor").addEventListener("click", () => {
-			let window = displayWindow("Add New Sensor", 450, createForm({
-				"name": {
-					"type": "textbox",
-					"isTitled": true,
-					"title": "Sensor Name"
-				}
-			}, "next", (data) => {
+		function _registerAddDialog(type){
+			document.getElementById("add" + type).addEventListener("click", () => {
+				baseForm.name.title = type + " Name";
+				let window = displayWindow("Add New " + type, 450, createForm(baseForm, "next", (data) => {
+					closeWindow(window);
+					if(data.hasOwnProperty("locType"))
+						locLayout.loc.items = locs[data.locType];
+					else
+						locLayout.loc.items = locs;
+					displayWindow("Configure " + type, 450, createForm(locLayout, "add " + type, (locData) => {
+						socket.emit("add" + type, {deviceID: "{{ deviceID }}", name: data.name, location: {value: locData.loc, type: data.locType}, extraData: undefined}, (res) => {
+							if(!res) alert("An error has occurred");
+							else reload();
+						});
+					}));
+				}));
+			});
+		}
+		
+		function _displayReconfigureDialog(type, object){
+			let prefilled = Object.assign({}, baseForm);
+			prefilled.name.value = object.name;
+			prefilled.name.title = type + " Name";
+			if(prefilled.hasOwnProperty("locType"))
+				prefilled.locType.value = object.loc.type;
+			let prefilledLocLayout = Object.assign({}, locLayout);
+			let window = displayWindow("Configure " + type, 450, createForm(prefilled, "next", (data) => {
 				closeWindow(window);
-				displayWindow("Configure Sensor", 450, createForm(sensorLayout, "add sensor", (extraData) => {
-					socket.emit("addSensor", {deviceID: "{{ deviceID }}", sensorName: data.name, extraData: extraData}, (res) => {
+				if(data.hasOwnProperty("locType")) {
+					prefilledLocLayout.loc.items = locs[data.locType];
+					if(object.loc.type === data.locType)
+						prefilledLocLayout.loc.value = object.loc.value;
+				}else {
+					prefilledLocLayout.loc.items = locs;
+					prefilledLocLayout.loc.value = object.loc.value;
+				}
+				displayWindow("Configure " + type, 450, createForm(prefilledLocLayout, "done", (locData) => {
+					socket.emit("configure" + type, {deviceID: "{{ deviceID }}", name: data.name, location: {value: locData.loc, type: data.locType}, extraData: undefined}, (res) => {
 						if(!res) alert("An error has occurred");
 						else reload();
 					});
 				}));
 			}));
-		});
+		}
+		
+		Waves.init();
+		_registerAddDialog("Sensor");
+		_registerAddDialog("Actuator");
 		
 		function reconfigureSensor(id){
-			displayWindow("Configure Sensor", 450, createForm(sensorLayout, "done", (extraData) => {
-				socket.emit("configureSensor", {deviceID: "{{ deviceID }}", sensorID: id, extraData: extraData}, (res) => {
-					if(!res) alert("An error has occurred");
-					else reload();
-				});
-			}));
+			_displayReconfigureDialog("Sensor", device.sensors[id]);
+		}
+		
+		function reconfigureActuator(id){
+			_displayReconfigureDialog("Actuator", device.sensors[id]);
 		}
 		
 		function removeSensor(id){

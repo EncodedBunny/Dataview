@@ -25,8 +25,8 @@
 			<span class="warningIcon" title="The experiment's dataflow is empty"></span>
 		{% endif %}
 	</div>
-	<h3>Sensors</h3>
-	{% if experiment.sensors|length <= 0 %}
+	<!--<h3>Sensors</h3>
+	{#{% if experiment.sensors|length <= 0 %}
 		<div class="emptyTableDiv">
 			<span>This experiment does not have any sensors</span>
 		</div>
@@ -49,8 +49,8 @@
 			{% endfor %}
 			</tbody>
 		</table>
-	{% endif %}
-	<button class="waves-button waves-float waves-ripple blueButton" style="margin-left: 0" onclick="openAddSensorDialog()">Configure Sensors</button>
+	{% endif %}#}
+	<button class="waves-button waves-float waves-ripple blueButton" style="margin-left: 0" onclick="openAddSensorDialog()">Configure Sensors</button>-->
 	<h3>Graphs</h3>
 	<div class="devicesGroupContainer" id="graphsGroupContainer">
 		<script type="text/javascript">
@@ -151,6 +151,9 @@
 			});
 			graph.update();
 		});
+		socket.on("experimentEnd", () => {
+			reload();
+		});
 		
 		document.getElementById("addGraph").onclick = () => {
 			displayWindow("New Graph", 450, createForm({
@@ -193,7 +196,7 @@
 			});
 		}
 		
-		function hasSensor(sensorID){
+		/*function hasSensor(sensorID){
 			for(const sensor of experiment.sensors)
 				if(sensor.id === sensorID) return true;
 			return false;
@@ -210,7 +213,7 @@
 		function openAddSensorDialog(){
 			let dialogRoot = document.createElement("ul");
 			dialogRoot.classList.add("menu");
-			for(const devData of {{ devices|json_encode|raw }}){
+			for(const devData of {#{{ devices|json_encode|raw }}){
 				if(Object.keys(devData.device.sensors).length <= 0) continue;
 				let devLi = document.createElement("li");
 				devLi.classList.add("menuItem");
@@ -237,7 +240,7 @@
 					let senDiv = document.createElement("div");
 					senDiv.classList.add("menuItemHeader", "noChildren");
 					let senSpan = document.createElement("span");
-					senSpan.appendChild(document.createTextNode(devData.device.sensors[sensorID].type));
+					senSpan.appendChild(document.createTextNode(devData.device.sensors[sensorID].name));
 					senDiv.appendChild(senSpan);
 					let added = hasSensor(sensorID);
 					let btn = document.createElement("button");
@@ -258,7 +261,7 @@
 								}
 							});
 						} else {
-							socket.emit("addSensorToExperiment", {experimentID: "{{ experimentID }}", deviceID: devData.id, sensorID: sensorID}, (sensor) => {
+							socket.emit("addSensorToExperiment", {experimentID: "{{ experimentID }}#}", deviceID: devData.id, sensorID: sensorID}, (sensor) => {
 								if(sensor) {
 									experiment.sensors.push(sensor);
 									changeBtnType(btn, false);
@@ -281,7 +284,7 @@
 			displayWindow("Add Sensors To Experiment", 450, dialogRoot, {onClose: () => {
 				reload();
 			}, marginBottom: false, maxHeight: 70});
-		}
+		}*/
 		
 		function displayMeasurementSelector(){
 			let confTemplate = {

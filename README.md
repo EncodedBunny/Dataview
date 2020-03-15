@@ -14,7 +14,7 @@ management of multiple equipment through a web platform.
 - [ ] JSON form specifier
     - [x] Basic form functionality
     - [ ] Events
-    - [ ] More input types
+    - [x] More input types
 - [x] Device drivers
     - [x] Device driver standardization
     - [x] Device driver loader
@@ -26,8 +26,8 @@ management of multiple equipment through a web platform.
     - [x] Client side dataflow editor
     - [x] Client to server dataflow exchange
     - [ ] Physical units for processed sensor data
-    - [ ] Logic flow control (In progress :hourglass_flowing_sand:)
-    - [ ] Output nodes (In progress :hourglass_flowing_sand:)
+    - [x] Logic flow control
+    - [x] Output nodes
 - [ ] Graphs and other data display
     - [ ] Variable x Variable graph
         - [ ] Scatter
@@ -40,7 +40,7 @@ management of multiple equipment through a web platform.
 
 ##### Future
 - [ ] Advanced data processing
-- [ ] Multiple dataflow data types (Only single precision floats are currently supported)
+- [x] Multiple dataflow data types (Only single precision floats are currently supported)
 - [ ] Sensor value threshold notification
-- [ ] Common serial API for device drivers
+- [ ] Common serial API for device drivers (In progress :hourglass_flowing_sand:)
 - [ ] Auto detection of derived physical unit

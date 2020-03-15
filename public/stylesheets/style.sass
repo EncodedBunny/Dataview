@@ -329,14 +329,18 @@ span.subHeader
 	justify-content: flex-start
 	flex-direction: row
 	flex-wrap: wrap
+	&.highlighted
+		background-color: rgba($background-dark, 0.2)
+		border-radius: 10px
+		padding: 0 10px 0 10px
 
 .container
 	display: flex
 	flex-flow: column
 	position: relative
-	background-color: rgba($background-dark, 0.2)
+	background-color: rgba($background-dark, 0.35)
 	border-radius: 10px
-	margin: 5px 10px 5px 0
+	margin: 10px 1% 0 0
 	&.device
 		width: 300px
 		height: 300px
@@ -349,6 +353,8 @@ span.subHeader
 		border-width: 10px
 		box-sizing: border-box
 		text-align: center
+	&:nth-child(5n)
+		margin-right: 0
 
 .mainView
 	flex: 1 1 auto

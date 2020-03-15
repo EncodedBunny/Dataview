@@ -303,11 +303,28 @@ class Dataflow {
 	}
 }
 Dataflow._registeredNodes = {};
-Dataflow.registerGlobalNode("Constant Value","Inputs",[],["value"],(input, props) => {
+Dataflow.registerGlobalNode("Constant Number","Values",[],["value"],(input, props) => {
 	return [Number.isInteger(props.value) ? Number.parseInt(props.value) : Number.parseFloat(props.value)];
 },{value: 0});
-Dataflow.registerGlobalNode("Random Float","Inputs",[],["value"],() => {
+Dataflow.registerGlobalNode("Constant Boolean","Values",[],[{name: "value", type: "boolean"}],(input, props) => {
+	return [props.value === "true"];
+},{
+	value: {
+		value: "true",
+		possibleValues: ["true", "false"]
+	}
+});
+Dataflow.registerGlobalNode("Random Float","Values",[],["value"],() => {
 	return [Math.random()];
+});
+Dataflow.registerGlobalNode("Random Boolean","Values",[],[{name: "value", type: "boolean"}],() => {
+	return [Math.random() >= 0.5];
+});
+Dataflow.registerGlobalNode("Pi","Values",[],["\uD835\uDF0B"],() => {
+	return [Math.PI];
+});
+Dataflow.registerGlobalNode("Euler's Number","Values",[],["e"],() => {
+	return [Math.E];
 });
 Dataflow.registerGlobalNode("Sum","Math",["x", "y"],["x+y"],(input) => {
 	return [input[0]+input[1]];
@@ -321,16 +338,70 @@ Dataflow.registerGlobalNode("Multiply","Math",["x", "y"],["x*y"],(input) => {
 Dataflow.registerGlobalNode("Divide","Math",["x", "y"],["x/y"],(input) => {
 	return [input[0]/input[1]];
 });
-Dataflow.registerGlobalNode("Exponentiate","Math",["x", "y"],["x^y"],(input) => {
+Dataflow.registerGlobalNode("Exponentiate","Math",["x", "n"],["x\u207F"],(input) => {
 	return [input[0]**input[1]];
 });
-Dataflow.registerGlobalNode("Round","Math",["float"],["integer"],(input) => {
+Dataflow.registerGlobalNode("Sine","Math",["x"],["sin(x)"],(input) => {
+	return [Math.sin(x)];
+});
+Dataflow.registerGlobalNode("Cosine","Math",["x"],["cos(x)"],(input) => {
+	return [Math.cos(x)];
+});
+Dataflow.registerGlobalNode("Tangent","Math",["x"],["tan(x)"],(input) => {
+	return [Math.tan(x)];
+});
+Dataflow.registerGlobalNode("Natural Log","Math",["x"],["ln(x)"],(input) => {
+	return [Math.log(x)];
+});
+Dataflow.registerGlobalNode("Log2","Math",["x"],["log\u2082(x)"],(input) => {
+	return [Math.log2(x)];
+});
+Dataflow.registerGlobalNode("Log10","Math",["x"],["log\u2081\u2080(x)"],(input) => {
+	return [Math.log10(x)];
+});
+Dataflow.registerGlobalNode("If","Control",["x", "y"],[{name: "result", type: "boolean"}],(input, props) => {
+	let x = input[0], y = input[1], res;
+	switch (props.comparison) {
+		default:
+		case "x == y":
+			res = x === y;
+			break;
+		case "x != y":
+			res = x !== y;
+			break;
+		case "x < y":
+			res = x < y;
+			break;
+		case "x > y":
+			res = x > y;
+			break;
+		case "x <= y":
+			res = x <= y;
+			break;
+		case "x >= y":
+			res = x >= y;
+			break;
+	}
+	return [res];
+},{
+	comparison: {
+		value: "x == y",
+		possibleValues: ["x == y", "x != y", "x < y", "x > y", "x <= y", "x >= y"]
+	}
+});
+Dataflow.registerGlobalNode("Branch","Control",["value", {name: "condition", type: "boolean"}],["true", "false"],(input) => {
+	return input[1] ? [input[0], undefined] : [undefined, input[0]];
+});
+Dataflow.registerGlobalNode("Boolean to Number","Conversion",[{name: "boolean", type: "boolean"}],["number"],(input) => {
+	return input[0] ? [1] : [0];
+});
+Dataflow.registerGlobalNode("Round","Conversion",["float"],["integer"],(input) => {
 	return [Math.round(input[0])];
 });
-Dataflow.registerGlobalNode("Floor","Math",["float"],["integer"],(input) => {
+Dataflow.registerGlobalNode("Floor","Conversion",["float"],["integer"],(input) => {
 	return [Math.floor(input[0])];
 });
-Dataflow.registerGlobalNode("Ceil","Math",["float"],["integer"],(input) => {
+Dataflow.registerGlobalNode("Ceil","Conversion",["float"],["integer"],(input) => {
 	return [Math.ceil(input[0])];
 });
 
@@ -349,6 +420,9 @@ class Node {
 		this.outputSlots = [];
 		this.worker = workerFunction;
 		this.properties = properties || {};
+		this._propVals = {};
+		for(let key of Object.keys(this.properties))
+			this._propVals[key] = typeof this.properties[key] === "object" && this.properties[key].hasOwnProperty("value") ? this.properties[key].value : this.properties[key];
 		for(let i = 0; i < this.outputNumber; i++) {
 			let self = {index: i, owner: this, connections: [], connect: (node, index) => {
 					self.connections.push({node: node, index: index});
@@ -376,14 +450,11 @@ class Node {
 				break;
 			}
 		if(ready){
-			for(let i of this.in)
-				if(typeof i !== "number")
-					return false;
 			let out;
 			if(this.worker[Symbol.toStringTag] === "AsyncFunction")
-				out = await this.worker(this.in, this.properties);
+				out = await this.worker(this.in, this._propVals);
 			else
-				out = this.worker(this.in, this.properties);
+				out = this.worker(this.in, this._propVals);
 			if(out.length !== this.outputSlots.length) return false;
 			for(let i = 0; i < this.outputSlots.length; i++) {
 				this.out[i] = out[i];

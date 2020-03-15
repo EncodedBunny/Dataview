@@ -20,25 +20,57 @@ module.exports = function (driverManager) {
 		return undefined;
 	};
 	
-	module.addSensor = function(deviceID, sensorName, extraData){
-		if(!sensorName) return false;
-		let senName = sensorName.trim();
+	module.addSensor = function(deviceID, name, location, extraData){
+		if(!name) return false;
+		let senName = name.trim();
 		if(senName <= 0) return false;
 		let device = devices[deviceID];
 		if(!device) return false;
 		let id = uuid(); // TODO: Verify uniqueness with respect to all devices (or a faster alternative, maybe global UUIDs)
-		if(driverManager.attachSensor(device.driver, deviceID, extraData, id)){
-			device.sensors[id] = {type: senName, data: extraData};
-			return true;
+		if(driverManager.attachSensor(device.driver, deviceID, location, extraData, id)){
+			if(device.addSensor(id, senName, location.value, location.type)){
+				Dataflow.registerGlobalNode(senName + " (" + device.name + ")", "Sensors", [], ["value"], async () => {
+					let x = await driverManager.getSensorValue(device.driver, deviceID, id);
+					return [x];
+				});
+				return true;
+			}
 		}
 		return false;
 	};
 	
-	module.configureSensor = function(deviceID, sensorID, extraData){
+	module.addActuator = function(deviceID, name, location, extraData){
+		if(!name) return false;
+		let actName = name.trim();
+		if(actName <= 0) return false;
 		let device = devices[deviceID];
 		if(!device) return false;
-		let res = driverManager.configureSensor(device.driver, deviceID, sensorID, extraData);
-		if(res) device.sensors[sensorID].data = extraData;
+		let id = uuid(); // TODO: Verify uniqueness with respect to all devices (or a faster alternative, maybe global UUIDs)
+		if(driverManager.attachActuator(device.driver, deviceID, location, extraData, id)){
+			if(device.addActuator(id, actName, location.value, location.type)){
+				Dataflow.registerGlobalNode(actName + " (" + device.name + ")", "Actuators", ["value"], [], async (input) => {
+					driverManager.setActuatorValue(device.driver, deviceID, id, input[0]);
+					return [];
+				});
+				return true;
+			}
+		}
+		return false;
+	};
+	
+	module.configureSensor = function(deviceID, sensorID, location, extraData){
+		let device = devices[deviceID];
+		if(!device) return false;
+		let res = driverManager.configureSensor(device.driver, deviceID, sensorID, location, extraData);
+		if(res) device.sensors[sensorID].loc = location;
+		return res;
+	};
+	
+	module.configureActuator = function(deviceID, sensorID, location, extraData){
+		let device = devices[deviceID];
+		if(!device) return false;
+		let res = driverManager.configureActuator(device.driver, deviceID, sensorID, location, extraData);
+		if(res) device.actuators[sensorID].loc = location;
 		return res;
 	};
 	
@@ -82,6 +114,28 @@ module.exports = function (driverManager) {
 	return module;
 };
 
+function parseLocationString(str) {
+	let intervals = str.trim().split(" ");
+	let locs = [];
+	for(let s of intervals){
+		if(s.length > 0){
+			let sep = s.indexOf("...");
+			if(sep > -1){
+				let a = Number.parseInt(s.substring(0, sep));
+				let b = Number.parseInt(s.substring(sep+3));
+				for(let i = a; i <= b; i++)
+					if(!locs.includes(i))
+						locs.push(i);
+			} else{
+				let i = Number.parseInt(s);
+				if(!locs.includes(i))
+					locs.push(i);
+			}
+		}
+	}
+	return locs;
+}
+
 class Device{
 	constructor(name, driver, extraData, driverManager){
 		this._name = name;
@@ -89,6 +143,7 @@ class Device{
 		this._deviceType = driverManager.baseNameToFormattedName(this._driver);
 		this._extraData = extraData;
 		this._sensors = {};
+		this._actuators = {};
 		this._listeners = {};
 		this._listener = (updates) => {
 			for(const sensor of Object.values(this.sensors))
@@ -96,7 +151,13 @@ class Device{
 					sensor.value = updates[sensor.id];
 			for(const list of Object.values(this._listeners))
 				list(updates);
-		}
+		};
+		this._locations = driverManager.getLocationLayout(this._driver);
+		if(typeof this._locations !== "object"){
+			this._locations = parseLocationString(this._locations);
+		} else
+			for(let type of Object.keys(this._locations))
+				this._locations[type] = parseLocationString(this._locations[type]);
 	}
 	
 	get name(){
@@ -119,8 +180,24 @@ class Device{
 		return this._sensors;
 	}
 	
+	get actuators(){
+		return this._actuators;
+	}
+	
 	get listener(){
 		return this._listener;
+	}
+	
+	get locations(){
+		return this._locations;
+	}
+	
+	addSensor(id, name, location, locationType){
+		return this._registerLocation(id,"_sensors", name, location, locationType);
+	}
+	
+	addActuator(id, name, location, locationType){
+		return this._registerLocation(id,"_actuators", name, location, locationType);
 	}
 	
 	addListener(id, listener){
@@ -143,7 +220,29 @@ class Device{
 		return false;
 	}
 	
+	_locAvailable(location, type){
+		if(Array.isArray(this._locations) !== (type === undefined)) return false;
+		if(Array.isArray(this._locations))
+			return this._locations.includes(Number.parseInt(location));
+		return this._locations.hasOwnProperty(type) ? this._locations[type].includes(Number.parseInt(location)) : false;
+	}
+	
+	_registerLocation(id, array, name, location, locationType){
+		if(!this._locAvailable(location, locationType)) return false;
+		this[array][id] = {
+			name: name,
+			loc: {
+				value: location
+			}
+		};
+		if(!Array.isArray(this._locations)) {
+			this[array][id].loc.type = locationType;
+			this._locations[locationType].remove(location);
+		}
+		return true;
+	}
+	
 	get webInfo(){
-		return {name: this.name, type: this.deviceType, sensors: this.sensors};
+		return {name: this.name, type: this.deviceType, sensors: this.sensors, actuators: this.actuators};
 	}
 }

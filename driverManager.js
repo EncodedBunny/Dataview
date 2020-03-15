@@ -66,22 +66,48 @@ function isDriverLoaded(device){
 
 function getDriversForms(){
 	let forms = {};
-	for(const driver of Object.values(drivers))
-		forms[driver.formattedName] = driver.deviceLayout;
+	for(const driver of Object.values(drivers)) {
+		let form = driver.deviceLayout.configForm;
+		if(driver.hasOwnProperty("models") && driver.models !== undefined && typeof driver.models === "object"){
+			form.model = {
+				type: "list",
+				isTitled: true,
+				title: "Model",
+				items: Object.keys(driver.models)
+			};
+		}
+		forms[driver.formattedName] = form;
+	}
 	return forms;
 }
 
 function getDeviceSensorLayout(device){
-	if(drivers[device])
-		return drivers[device].sensorLayout;
+	if(drivers[device]) {
+		let dev = drivers[device].deviceLayout;
+		if(typeof dev.locations.layout === "object"){
+		
+		}
+	}
+	return undefined;
+}
+
+function getLocationLayout(driver){
+	if(drivers[driver])
+		return drivers[driver].deviceLayout.locations.layout;
+	return undefined;
+}
+
+function getLocationLabels(driver){
+	if(drivers[driver])
+		return drivers[driver].deviceLayout.locations.form;
 	return undefined;
 }
 
 function getDriversSensorForms(){
-	let forms = {};
-	for(const driver of Object.values(drivers))
-		forms[driver.formattedName] = driver.sensorLayout;
-	return forms;
+	// let forms = {};
+	// for(const driver of Object.values(drivers))
+	// 	forms[driver.formattedName] = driver.sensorLayout;
+	// return forms;
 }
 
 function getInstalledDrivers(){
@@ -116,9 +142,14 @@ function attachDevice(device, deviceID) {
 	return false;
 }
 
-function attachSensor(driver, deviceID, extraData, sensorID){
-	if(!driver || !deviceID || !extraData || !drivers[driver]) return -1;
-	return drivers[driver].registerSensor(deviceID, extraData, sensorID);
+function attachSensor(driver, deviceID, location, extraData, sensorID){
+	if(!driver || !deviceID || !location || !drivers[driver]) return false;
+	return drivers[driver].registerSensor(deviceID, location, sensorID, extraData);
+}
+
+function attachActuator(driver, deviceID, location, extraData, actuatorID){
+	if(!driver || !deviceID || !drivers[driver]) return false;
+	return drivers[driver].registerActuator(deviceID, location, actuatorID, extraData);
 }
 
 function configureSensor(driver, deviceID, sensorID, extraData){
@@ -136,6 +167,17 @@ function getSensorValue(driver, deviceID, sensorID){
 	return drivers[driver].getSensorValue(deviceID, sensorID);
 }
 
+function setActuatorValue(driver, deviceID, actuatorID, value){
+	if(!drivers[driver]) return undefined;
+	return drivers[driver].setActuatorValue(deviceID, actuatorID, value);
+}
+
+class Driver{
+	constructor(name){
+		this._handle = require(name);
+	}
+}
+
 /*setInterval(_saveChanges, 5 * 60 * 1000);
 
 process.on("exit", () => {
@@ -143,5 +185,5 @@ process.on("exit", () => {
 });*/
 
 module.exports = {
-	loadDriver, installDriver, isDriverLoaded, getDriversForms, getInstalledDrivers, formattedNameToBaseName, baseNameToFormattedName, getDriversSensorForms, getDeviceSensorLayout, attachSensor, attachDevice, configureSensor, detachSensor, getSensorValue
+	loadDriver, installDriver, isDriverLoaded, getDriversForms, getInstalledDrivers, formattedNameToBaseName, baseNameToFormattedName, getDriversSensorForms, getLocationLayout, getLocationLabels, getDeviceSensorLayout, attachSensor, attachActuator, attachDevice, configureSensor, detachSensor, getSensorValue, setActuatorValue
 };

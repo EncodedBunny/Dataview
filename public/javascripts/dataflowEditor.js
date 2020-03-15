@@ -174,7 +174,8 @@ class DataflowEditor{
 							if(slot){
 								dragTarget = {index: slot.index, node: node};
 								let begin = {x: slot.pos.x+DataflowEditor.slotCircleRadius, y: slot.pos.y};
-								this.activeSlotLine = {start: begin, end: begin};
+								let outLbl = node.outputLabels[slot.index];
+								this.activeSlotLine = {start: begin, end: begin, type: typeof outLbl === "object" ? outLbl.type : "number"};
 								hitSlot = true;
 							}
 						} else{
@@ -216,7 +217,11 @@ class DataflowEditor{
 						if(dragTarget.node !== node)
 							if(!pointInsideArea(transformedPoint,{x: node.position.x + DataflowEditor.slotCircleArea, y: node.position.y},{width: node.innerWidth, height: node.size.height})) {
 								let slot = getHitSlot(node, node.inputNumber, node.position.x, transformedPoint);
-								if(slot !== undefined) this.dataflow.connect(dragTarget.node, dragTarget.index, node, slot.index);
+								if(slot !== undefined) {
+									let inLbl = node.inputLabels[slot.index];
+									if(this.activeSlotLine.type === (typeof inLbl === "object" ? inLbl.type : "number"))
+										this.dataflow.connect(dragTarget.node, dragTarget.index, node, slot.index);
+								}
 							}
 						break;
 					}
@@ -260,6 +265,17 @@ class DataflowEditor{
 		// this.addNode("Another Node",0,350,350,["1", "2", "3"],["out"]);
 		// this.addNode("Another test Node",500,350,350,["one", "two", "three", "four"],["out"]);
 		
+		this.colorPallette = {
+			line: {
+				number: "#fafafa",
+				boolean: "#eb3131"
+			},
+			slot: {
+				number: "#7d7d7d",
+				boolean: "#ab5c5c"
+			}
+		};
+		
 		window.requestAnimationFrame(this.bindedRender);
 	}
 	
@@ -300,8 +316,9 @@ class DataflowEditor{
 	get fileStructure(){
 		let curTransform = this.canvasCtx.getTransform();
 		let struct = {nodes: [], connections: [], transform: [curTransform.a, curTransform.b, curTransform.c, curTransform.d, curTransform.e, curTransform.f]};
-		for(let node of this.dataflow.struct.nodes)
+		for(let node of this.dataflow.struct.nodes) {
 			struct.nodes.push([node.nodePath, [node.position.x, node.position.y], node._properties]);
+		}
 		let n = 0;
 		for(let node of this.dataflow.struct.nodes) {
 			for (let x = 0; x < node.connections.length; x++)
@@ -342,7 +359,6 @@ class DataflowEditor{
 		// Render
 		for(let node of this.dataflow.struct.nodes){
 			this.canvasCtx.save();
-			this.canvasCtx.strokeStyle = "#fafafa"; // TODO: Find better color
 			this.canvasCtx.lineCap = "round";
 			this.canvasCtx.lineWidth = DataflowEditor.slotCircleRadius;
 			for (const toIndex in node.inputConnections)
@@ -359,6 +375,8 @@ class DataflowEditor{
 							y: this._getSlotY(toIndex, node.position.y, node.size.height, node.numberOfInputs)
 						};
 						this.canvasCtx.save();
+						let lbl = fromNode.outputLabels[prevOut.index];
+						this.canvasCtx.strokeStyle = this.colorPallette.line[typeof lbl === "object" ? lbl.type : "number"];
 						this.canvasCtx.beginPath();
 						this.canvasCtx.moveTo(fromPos.x, fromPos.y);
 						let halfX = (fromPos.x + toPos.x) / 2;
@@ -399,7 +417,7 @@ class DataflowEditor{
 			this.canvasCtx.lineTo(this.activeSlotLine.end.x, this.activeSlotLine.end.y);
 			this.canvasCtx.stroke();
 			this.canvasCtx.lineWidth = DataflowEditor.slotCircleRadius;
-			this.canvasCtx.strokeStyle = "#fafafa"; // TODO: Find better color
+			this.canvasCtx.strokeStyle = this.colorPallette.line[this.activeSlotLine.type]; // TODO: Find better color
 			this.canvasCtx.stroke();
 			this.canvasCtx.restore();
 		}
@@ -417,13 +435,13 @@ class DataflowEditor{
 		
 		this.canvasCtx.font = "18px Roboto";
 		for(let y = 0; y < labels.length; y++){
-			let lbl = labels[y];
-			this.canvasCtx.fillStyle = "#7d7d7d";
+			let lbl = typeof labels[y] === "object" ? labels[y].name : labels[y];
+			this.canvasCtx.fillStyle = this.colorPallette.slot[typeof labels[y] === "object" ? labels[y].type : "number"];
 			let yPos = startY+y*2*DataflowEditor.slotCircleRadius+y*DataflowEditor.slotVerticalSpacing+DataflowEditor.slotCircleRadius;
 			this.canvasCtx.fillCircle(baseX+DataflowEditor.slotHorizontalSpacing+DataflowEditor.slotCircleRadius, yPos, DataflowEditor.slotCircleRadius);
 			this.canvasCtx.fillStyle = "#fafafa";
 			this.canvasCtx.textBaseline = "middle";
-			this.canvasCtx.fillText(lbl,baseX+((left ? -this.canvasCtx.measureText(lbl).width-DataflowEditor.slotLabelSpacing : 2*DataflowEditor.slotHorizontalSpacing+2*DataflowEditor.slotCircleRadius+DataflowEditor.slotLabelSpacing)), yPos, DataflowEditor.slotLabelArea);
+			this.canvasCtx.fillText(lbl,baseX+((left ? -this.canvasCtx.measureText(lbl).width-DataflowEditor.slotLabelSpacing : 2*DataflowEditor.slotHorizontalSpacing+2*DataflowEditor.slotCircleRadius+DataflowEditor.slotLabelSpacing)), yPos);
 			this.canvasCtx.fillStyle = "#fafafa";
 		}
 	}
@@ -507,7 +525,10 @@ class Node {
 	setProperty(prop, value){
 		if(this._properties.hasOwnProperty(prop)){
 			let prev = this._properties[prop];
-			this._properties[prop] = value;
+			if(typeof prev === "object" && prev.hasOwnProperty("value"))
+				this._properties[prop].value = value;
+			else
+				this._properties[prop] = value;
 			if(prop === "name" && value !== prev)
 				this._updateWidth();
 		}
@@ -515,7 +536,20 @@ class Node {
 	
 	_updateWidth(){
 		this.innerWidth = fontWidth(DataflowEditor.titleFont, this._properties.name || this.t);
-		this.width = this.innerWidth + 2*DataflowEditor.slotLabelArea + 2*DataflowEditor.slotLabelSpacing + 2*DataflowEditor.titleSlotLabelAreaSpacing + 2*DataflowEditor.slotCircleArea;
+		let tmpMaxW = 0;
+		for(let lbl of this.inputLabels){
+			let w = fontWidth(DataflowEditor.titleFont,typeof lbl === "object" ? lbl.name : lbl);
+			if(w > tmpMaxW)
+				tmpMaxW = w;
+		}
+		for(let lbl of this.outputLabels){
+			let w = fontWidth(DataflowEditor.titleFont,typeof lbl === "object" ? lbl.name : lbl);
+			if(w > tmpMaxW)
+				tmpMaxW = w;
+		}
+		if(tmpMaxW < DataflowEditor.slotLabelArea)
+			tmpMaxW = DataflowEditor.slotLabelArea;
+		this.width = this.innerWidth + 2*tmpMaxW + 2*DataflowEditor.slotLabelSpacing + 2*DataflowEditor.titleSlotLabelAreaSpacing + 2*DataflowEditor.slotCircleArea;
 	}
 	
 	get title(){

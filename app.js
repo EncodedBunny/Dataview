@@ -8,7 +8,14 @@ module.exports = function(port){
 	const http = require('http');
 	const url = require("url");
 	const favicon = require('serve-favicon');
-
+	
+	Array.prototype.remove = function(x) {
+		let i = this.indexOf(+x);
+		if(i > -1)
+			this.splice(i, 1);
+		return this;
+	};
+	
 	const driverManager = require('./driverManager');
 	const deviceManager = require('./deviceManager')(driverManager);
 	const fileManager = require("./fileManager")();
@@ -106,8 +113,10 @@ module.exports = function(port){
 				});
 		});
 		
-		linkFunction("addSensor", deviceManager.addSensor,["deviceID", "sensorName", "extraData"]);
-		linkFunction("configureSensor", deviceManager.configureSensor,["deviceID", "sensorID", "extraData"]);
+		linkFunction("addSensor", deviceManager.addSensor,["deviceID", "name", "location", "extraData"]);
+		linkFunction("addActuator", deviceManager.addActuator,["deviceID", "name", "location", "extraData"]);
+		linkFunction("configureSensor", deviceManager.configureSensor,["deviceID", "sensorID", "location", "extraData"]);
+		linkFunction("configureActuator", deviceManager.configureActuator,["deviceID", "sensorID", "location", "extraData"]);
 		linkFunction("removeSensor", deviceManager.removeSensor,["deviceID", "sensorID"],{deviceID: checkAndGetFromUrl("devices")});
 		
 		linkFunction("addExperiment", experimentManager.addExperiment,["name"]);
@@ -115,15 +124,20 @@ module.exports = function(port){
 		linkFunction("getExperiments", experimentManager.getExperiments);
 		linkFunction("setExperimentMeasurement", experimentManager.setExperimentMeasurement,["id", "type", "frequency", "measurementData"]);
 		linkFunction("updateExperimentDataflow", experimentManager.updateExperimentDataflow,["id", "dataflowStructure"]);
-		linkFunction("addSensorToExperiment", experimentManager.addSensorToExperiment,["experimentID", "deviceID", "sensorID"]);
-		linkFunction("removeSensorFromExperiment", experimentManager.removeSensorFromExperiment, ["experimentID", "sensorID"]);
+		/*linkFunction("addSensorToExperiment", experimentManager.addSensorToExperiment,["experimentID", "deviceID", "sensorID"]);
+		linkFunction("removeSensorFromExperiment", experimentManager.removeSensorFromExperiment, ["experimentID", "sensorID"]);*/
 		linkFunction("beginExperiment", experimentManager.beginExperiment, ["id"]);
 		linkFunction("stopExperiment", experimentManager.stopExperiment, ["id"]);
 		linkFunction("addGraphToExperiment", experimentManager.addGraphToExperiment,["experimentID", "title", "xLbl", "yLbl", "saveType"]);
 		linkFunction("listenToExperiment", experimentManager.listenToExperiment,["id", "listenerID", "listener"],{
 			listenerID: socket.id,
-			listener: (title, point) => {
-				socket.emit("graphData", {title: title, point: point});
+			listener: {
+				onGraphData: (title, point) => {
+					socket.emit("graphData", {title: title, point: point});
+				},
+				onEnd: () => {
+					socket.emit("experimentEnd");
+				}
 			}
 		});
 		
@@ -137,6 +151,8 @@ module.exports = function(port){
 		socket.on('disconnect', function() {
 			for(const device of deviceManager.getDeviceList())
 				device.removeListener(socket.id);
+			for(const experiment of experimentManager.getExperimentList())
+				experiment.removeListener(socket.id);
 		});
 	});
 

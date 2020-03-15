@@ -109,20 +109,29 @@ function displayEditor(dataflow, onClose){
 				label.setAttribute("style","text-transform: capitalize; margin-right: 5px");
 				elementPanel.appendChild(label);
 				let obj;
-				switch (typeof node._properties[prop]) {
-					case "string":
-						obj = document.createElement("input");
-						obj.type = "text";
-						break;
-					case "number":
-						obj = document.createElement("input");
-						obj.type = "number";
-						break;
-				}
+				if(typeof node._properties[prop] === "object" && !Array.isArray(node._properties[prop]) && node._properties[prop].hasOwnProperty("possibleValues")) {
+					obj = document.createElement("select");
+					for(const value of node._properties[prop].possibleValues) {
+						let item = document.createElement("option");
+						item.appendChild(document.createTextNode(value));
+						item.setAttribute("value", value);
+						obj.appendChild(item);
+					}
+				} else
+					switch (typeof node._properties[prop]) {
+						case "string":
+							obj = document.createElement("input");
+							obj.type = "text";
+							break;
+						case "number":
+							obj = document.createElement("input");
+							obj.type = "number";
+							break;
+					}
 				obj.setAttribute("id", prop);
 				obj.setAttribute("name", prop);
 				obj.classList.add("formItem");
-				obj.value = node._properties[prop];
+				obj.value = typeof node._properties[prop] === "object" && node._properties[prop].hasOwnProperty("value") ? node._properties[prop].value : node._properties[prop];
 				document.getElementById("editorPropMenuClose").onclick = () => {
 					currentEditor.deselectNode();
 				};
@@ -131,9 +140,13 @@ function displayEditor(dataflow, onClose){
 			}
 		},(node) => {
 			propMenu.classList.remove("visible");
-			for(const child of propMenuBody.getElementsByClassName("formItem"))
-				if(child.value !== undefined && (typeof child.value === "string" ? child.value.length > 0 : true))
-					node.setProperty(child.id, child.value);
+			for(const child of propMenuBody.getElementsByClassName("formItem")) {
+				let obj = child;
+				if(child.tagName.toLowerCase() === "select")
+					obj = child.options[child.selectedIndex >= 0 ? child.selectedIndex : 0];
+				if(obj.value !== undefined && (typeof obj.value === "string" ? obj.value.length > 0 : true))
+					node.setProperty(child.id, obj.value);
+			}
 		});
 	} else
 		toggleScreenDiv(true);

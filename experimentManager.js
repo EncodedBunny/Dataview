@@ -56,7 +56,7 @@ module.exports = function(deviceManager, driverManager, fileManager) {
 		return id;
 	};
 	
-	module.addSensorToExperiment = function(experimentID, deviceID, sensorID){
+	/*module.addSensorToExperiment = function(experimentID, deviceID, sensorID){
 		if(experiments[experimentID])
 			if(experiments[experimentID].addSensor(deviceID, sensorID))
 				return deviceManager.getDevice(deviceID).sensors[sensorID];
@@ -67,7 +67,7 @@ module.exports = function(deviceManager, driverManager, fileManager) {
 		if(experiments[experimentID])
 			return experiments[experimentID].removeSensor(sensorID);
 		return false;
-	};
+	};*/
 	
 	module.getExperiment = function(id){
 		return experiments[id];
@@ -78,6 +78,10 @@ module.exports = function(deviceManager, driverManager, fileManager) {
 		for(const id of Object.keys(experiments))
 			res.push({id: id, experiment: experiments[id].webInfo});
 		return res;
+	};
+	
+	module.getExperimentList = function(){
+		return Object.values(experiments);
 	};
 	
 	module.setExperimentMeasurement = function(id, type, frequency, measurementData){
@@ -121,7 +125,7 @@ module.exports = function(deviceManager, driverManager, fileManager) {
 	class Experiment{
 		constructor(name, dataflowStructure) {
 			this._name = name;
-			this._sensors = {};
+			//this._sensors = {};
 			this._dataflow = new Dataflow(dataflowStructure);
 			this._graphs = {};
 			this._measurement = undefined;
@@ -131,23 +135,44 @@ module.exports = function(deviceManager, driverManager, fileManager) {
 			this._dataflow.registerNode("Measurement Start","Measurement",[],["time"],() => {
 				return [this._measurement.start];
 			});
-			this._dataflow.registerNode("Sample Number","Measurement",[],["number"],() => {
+			this._dataflow.registerNode("Sample Number","Measurement",[],["sample"],() => {
 				return [this._measurement.sample];
 			});
-			this._dataflow.registerNode("Elapsed Time","Measurement",[],["number"],() => {
-				return [Date.now()-this._measurement.start];
+			this._dataflow.registerNode("Current Time","Time",[],["time"],(input, props) => {
+				let x = Date.now()-this._measurement.start;
+				switch (props.unit) {
+					case "Milliseconds":
+						break;
+					default:
+					case "Seconds":
+						x /= 1000;
+						break;
+					case "Minutes":
+						x /= 60*1000;
+						break;
+					case "Hours":
+						x /= 60*60*1000;
+						break;
+				}
+				return [Math.floor(x)];
+			},{
+				unit: {
+					value: "Seconds",
+					possibleValues: ["Milliseconds", "Seconds", "Minutes", "Hours"]
+				}
 			});
 		}
 		
-		addSensor(deviceID, sensorID){
+		/*addSensor(deviceID, sensorID){
 			if(this._sensors[sensorID]) return false;
 			let dev = deviceManager.getDevice(deviceID);
 			let sen = deviceManager.getSensor(deviceID, sensorID);
 			if(dev && sen) {
 				this._sensors[sensorID] = deviceID; // TODO: Make sub arrays of device IDs
 				this._dataflow.registerNode(sen.type + " (" + dev.name + ")","Sensors",[],["time", "value"],async () => {
+					let start = Date.now();
 					let x = await driverManager.getSensorValue(dev.driver, deviceID, sensorID);
-					return [Date.now(), x];
+					return [(Date.now()-start)/2, x];
 				});
 				return true;
 			}
@@ -158,7 +183,7 @@ module.exports = function(deviceManager, driverManager, fileManager) {
 			if(!this._sensors[sensorID]) return false;
 			delete this._sensors[sensorID]; // TODO: Clean places where sensor is used (Dataflows)
 			return true;
-		}
+		}*/
 		
 		setDataflowStructure(dataflowStructure){
 			if(!this._dataflow.verifyFileStructure(dataflowStructure)) return false;
@@ -178,7 +203,7 @@ module.exports = function(deviceManager, driverManager, fileManager) {
 				let point = {x: input[0], y: input[1]};
 				graph.addData(point);
 				for(const listener of Object.values(this._listeners))
-					listener(title, point);
+					listener.onGraphData(title, point);
 				if(graph.data.length >= 25)
 					Experiment._saveGraph(graph);
 				return [];
@@ -187,8 +212,8 @@ module.exports = function(deviceManager, driverManager, fileManager) {
 		}
 		
 		loadFromFile(fileStructure){
-			for(const sensor of fileStructure.sensors)
-				this._sensors.push({sensor});
+			/*for(const sensor of fileStructure.sensors)
+				this._sensors.push({sensor});*/
 			for(const g of fileStructure.graphs)
 				this.addGraph(g.title, g.axis.x, g.axis.y);
 		}
@@ -232,13 +257,15 @@ module.exports = function(deviceManager, driverManager, fileManager) {
 					Experiment._saveGraph(graph);
 					fileManager.endGraphSave(graph.saveFile, this._measurement.start);
 				}
+				for(const listener of Object.values(this._listeners))
+					listener.onEnd();
 				return true;
 			}
 			return false;
 		}
 		
 		addListener(id, listener){
-			if(id !== undefined && typeof listener === "function" && !this.hasListener(id)){
+			if(id !== undefined && !this.hasListener(id)){
 				this._listeners[id] = listener;
 				return true;
 			}
@@ -278,9 +305,9 @@ module.exports = function(deviceManager, driverManager, fileManager) {
 			return this._name;
 		}
 		
-		get sensors(){
+		/*get sensors(){
 			return this._sensors;
-		}
+		}*/
 		
 		get graphs() {
 			return this._graphs;
@@ -303,7 +330,7 @@ module.exports = function(deviceManager, driverManager, fileManager) {
 				graphs.push({title: title, axisLabels: graph.axisLabels});
 			}
 			res.graphs = graphs;
-			let sensors = [];
+			/*let sensors = [];
 			for(const sensorID in this.sensors)
 				if(this.sensors.hasOwnProperty(sensorID))
 					sensors.push({
@@ -312,7 +339,7 @@ module.exports = function(deviceManager, driverManager, fileManager) {
 						device: deviceManager.getDevice(this.sensors[sensorID]).name,
 						deviceID: this.sensors[sensorID]
 					});
-			res.sensors = sensors;
+			res.sensors = sensors;*/
 			return res;
 		}
 	}
@@ -331,7 +358,7 @@ class Graph {
 		this._title = title;
 		this._labels = {x: xLbl, y: yLbl};
 		this._saveType = saveType;
-		this._saveFile = undefined;
+		this.saveFile = undefined;
 	}
 	
 	addData(dataPoint){
@@ -357,15 +384,6 @@ class Graph {
 	
 	get axisLabels(){
 		return this._labels;
-	}
-	
-	set saveFile(file){
-		if(this._saveFile === undefined)
-			this._saveFile = file;
-	}
-	
-	get saveFile(){
-		return this._saveFile;
 	}
 	
 	get saveType(){
