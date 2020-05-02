@@ -52,7 +52,7 @@
 			let newDeviceWindow = displayWindow("Add New Device", 450, createForm(baseForm, "next", (baseDevice) => {
 				closeWindow(newDeviceWindow);
 				let configWindow = displayWindow("Add New " + baseDevice.device, 450, createForm(currentForm, "add device", (data) => {
-					socket.emit("addDevice", {name: baseDevice.name, type: baseDevice.device, extraData: data}, (uuid) => {
+					socket.emit("addDevice", {name: baseDevice.name, type: baseDevice.device, extraData: data, model: data.model}, (uuid) => {
 						if(uuid) enterSublink(uuid);
 						else{
 							alert("An error occurred");

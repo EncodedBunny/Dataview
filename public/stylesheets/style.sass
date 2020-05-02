@@ -80,7 +80,7 @@ input[type=text], input[type=password], input[type=number]
 	border-top: none
 	border-right: none
 	border-left: none
-	border-bottom: solid darken($text, 20%) 2px
+	border-bottom: solid darken($text, 30%) 2px
 	outline: none
 	background-color: transparent
 	font-family: 'Roboto', sans-serif
@@ -89,10 +89,11 @@ input[type=text], input[type=password], input[type=number]
 	font-size: large
 	transition: box-shadow 0.3s ease-in-out, border-bottom 0.3s ease-in-out
 	&:hover
-		border-bottom: solid darken($text, 10%) 2px
-	&:focus
-		box-shadow: inset 0px -12px 10px -15px darken($text, 5%)
 		border-bottom: solid darken($text, 5%) 2px
+	&:focus
+		border-bottom: solid lighten($primary, 15%) 2px
+	&:invalid
+		border-bottom: solid $danger 2px
 
 select
 	background: $background-dark
@@ -538,8 +539,7 @@ li.menuItem
 	flex-grow: 1
 
 .errorText
-	font-weight: bold
-	color: #e57373
+	color: lighten($danger, 5%)
 
 .errorStatus
 	text-align: center

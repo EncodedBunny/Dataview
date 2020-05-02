@@ -1,0 +1,17 @@
+
+<!-- Generated with http://jxnblk.com/paths -->
+<svg
+  xmlns='http://www.w3.org/2000/svg'
+  viewBox='0 0 64 64'
+  width='64' height='64'
+  preserveAspectRatio="none"
+  fill='#303f9f'>
+  <path d='M64 0 S54 4 64 8 L64 16 S57 20 64 24 L64 32 S53 36 64 40 L64 48 S56 52 64 56 L64 64 Z'>
+  <animate dur="15s"
+           repeatCount="indefinite"
+           attributeName="d"
+           values="M64 0 S54 4 64 8 L64 16 S57 20 64 24 L64 32 S53 36 64 40 L64 48 S56 52 64 56 L64 64 Z;
+            M64 0 S58 4 64 8 L64 16 S52 20 64 24 L64 32 S44 36 64 40 L64 48 S50 52 64 56 L64 64 Z;
+            M64 0 S54 4 64 8 L64 16 S57 20 64 24 L64 32 S53 36 64 40 L64 48 S56 52 64 56 L64 64 Z;"/>
+  </path>
+</svg>

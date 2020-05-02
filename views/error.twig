@@ -10,9 +10,9 @@
 <div>
 	<h1 class="errorHeader">An error has occurred :(</h1>
 	{% if error is empty %}
-		<h2 class="errorStatus"><i class="errorText">500</i> - Internal Server Error</h2>
+		<h2 class="errorStatus"><i class="errorText" style="font-weight: bold">500</i> - Internal Server Error</h2>
 	{% else %}
-		<h2 class="errorStatus"><i class="errorStatus errorText">{{error.status}}</i>: {{message}}</h2>
+		<h2 class="errorStatus"><i class="errorStatus errorText" style="font-weight: bold">{{error.status}}</i>: {{message}}</h2>
 		<h4 class="stackTraceHeader">Stack trace:</h4>
 		<pre class="stackTraceText">{{error.stack}}</pre>
 	{% endif %}

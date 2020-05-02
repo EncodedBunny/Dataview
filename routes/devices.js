@@ -19,7 +19,7 @@ module.exports = function (driverManager, deviceManager) {
 				device: device.webInfo,
 				deviceID: req.params.device,
 				availableLocations: device.locations,
-				locationLabels: driverManager.getLocationLabels(device.driver)
+				locationLabels: device.driver.locationLabels
 			});
 		else
 			next();

@@ -1,120 +1,18 @@
-const fs = require("fs");
+const fs = require("fs-extra");
 const path = require("path");
-const {spawn} = require("child_process");
-let driversFile = JSON.parse(fs.readFileSync(path.join(__dirname, "drivers.json"), "utf8"));
-let drivers = [];
+let Driver = require("./driver");
 
-for(const device of driversFile.installed)
-	loadDriver(device);
+let driversDir = path.join(__dirname, "drivers");
+let driversJsonPath = path.join(driversDir, "drivers.json");
+let driversFile = fs.readJSONSync(driversJsonPath);
+let drivers = {};
+let managers = {
+	serial: require("./serialManager")
+};
 
-function loadDriver(device){
-	if(isDriverLoaded(device)) return false;
-	try {
-		drivers[device] = require(device)();
-		return true;
-	} catch (e) {
-		return false;
-	}
-}
-
-function installDriver(driverPath, onSuccess, onFail){ // TODO: Use promises
-	if(!fs.existsSync(driverPath) || !fs.lstatSync(driverPath).isDirectory() || !fs.existsSync(path.join(driverPath, "package.json"))) return false;
-	let name = JSON.parse(fs.readFileSync(path.join(driverPath, "package.json"), "utf8")).name;
-	let eFunc = () => {};
-	let res = spawn("npm" + (process.platform === "win32" ? ".cmd" : ""), ["install", driverPath]);
-	res.on("close", (status) => {
-		if(status !== 0) return (onFail || eFunc)();
-		if(!driversFile.installed.contains(name)) {
-			driversFile.installed.push(name);
-			_saveChanges();
-		}
-		(onSuccess || eFunc)();
-	});
-	return true;
-	/*let progress = onProgress || function() {}; // Prevent undefined
-	progress(0, "check");
-	if(driverJson === path.basename(driverJson) || !fs.existsSync(driverJson) || !fs.lstatSync(driverJson).isFile()) return false;
-	try {
-		let json = JSON.parse(fs.readFileSync(driverJson, "utf8"));
-		if(!json.device || json.device.trim().length <= 0 || !json.formattedName || json.formattedName.trim().length <= 0 || !json.driverFile || !json.layoutFile) return false;
-		let finalJson = {device: json.device.trim().toLowerCase().split(" ").join("-"), formattedName: json.formattedName.trim()};
-		if(fs.existsSync(path.join(driversFolder, finalJson.device))) return false;
-		const driverFile = path.join(driverJson, json.driverFile);
-		const layoutFile = path.join(driverJson, json.layoutFile);
-		if(!fs.lstatSync().isFile(driverFile) || !fs.lstatSync().isFile(layoutFile)) return false;
-		progress(0.2, "copy"); // TODO: Check if driverJson is an actual valid driver (digitally signed drivers(?))
-		const driverFolder = path.join(driversFolder, finalJson.device);
-		fs.mkdirSync(driverFolder);
-		fs.writeFileSync(path.join(driverFolder, "driver.json"), JSON.stringify(finalJson));
-		fs.copyFile(layoutFile, path.join(driverFolder, "layout.json"));
-		progress(0.6, "install");
-		// TODO: execSync();
-		fs.copyFile(driverFile, path.join(driverFolder, "driver.node"));
-		progress(0.8, "clean");
-		fs.unlinkSync(driverJson);
-		progress(0.9, "save");
-		driversFile.installed.push(finalJson.device);
-		progress(1, "done");
-	} catch (e) {
-		return false;
-	}*/
-}
-
-function isDriverLoaded(device){
-	return drivers.hasOwnProperty(device);
-}
-
-function getDriversForms(){
-	let forms = {};
-	for(const driver of Object.values(drivers)) {
-		let form = driver.deviceLayout.configForm;
-		if(driver.hasOwnProperty("models") && driver.models !== undefined && typeof driver.models === "object"){
-			form.model = {
-				type: "list",
-				isTitled: true,
-				title: "Model",
-				items: Object.keys(driver.models)
-			};
-		}
-		forms[driver.formattedName] = form;
-	}
-	return forms;
-}
-
-function getDeviceSensorLayout(device){
-	if(drivers[device]) {
-		let dev = drivers[device].deviceLayout;
-		if(typeof dev.locations.layout === "object"){
-		
-		}
-	}
-	return undefined;
-}
-
-function getLocationLayout(driver){
-	if(drivers[driver])
-		return drivers[driver].deviceLayout.locations.layout;
-	return undefined;
-}
-
-function getLocationLabels(driver){
-	if(drivers[driver])
-		return drivers[driver].deviceLayout.locations.form;
-	return undefined;
-}
-
-function getDriversSensorForms(){
-	// let forms = {};
-	// for(const driver of Object.values(drivers))
-	// 	forms[driver.formattedName] = driver.sensorLayout;
-	// return forms;
-}
-
-function getInstalledDrivers(){
-	let names = [];
-	for(const driver of Object.values(drivers))
-		names.push(driver.formattedName);
-	return names;
+for(const name of driversFile.installed) {
+	if(!drivers.hasOwnProperty(name))
+		drivers[name] = new Driver(name, managers);
 }
 
 function formattedNameToBaseName(formatted){
@@ -128,62 +26,83 @@ function baseNameToFormattedName(name){
 	return (drivers[name] ? drivers[name].formattedName : undefined);
 }
 
-function _saveChanges(sync){
-	if(sync === true)
-		fs.writeFileSync(path.join(__dirname, "drivers.json"), JSON.stringify(driversFile));
-	else
-		fs.writeFile(path.join(__dirname, "drivers.json"), JSON.stringify(driversFile));
-}
-
-function attachDevice(device, deviceID) {
-	if(!device || !device.driver || !device.extraData || !drivers[device.driver]) return false;
-	if(drivers[device.driver].registerDevice(deviceID, device.extraData))
-		return drivers[device.driver].addListener(deviceID, device.listener);
-	return false;
-}
-
-function attachSensor(driver, deviceID, location, extraData, sensorID){
-	if(!driver || !deviceID || !location || !drivers[driver]) return false;
-	return drivers[driver].registerSensor(deviceID, location, sensorID, extraData);
-}
-
-function attachActuator(driver, deviceID, location, extraData, actuatorID){
-	if(!driver || !deviceID || !drivers[driver]) return false;
-	return drivers[driver].registerActuator(deviceID, location, actuatorID, extraData);
-}
-
-function configureSensor(driver, deviceID, sensorID, extraData){
-	if(!drivers[driver]) return false;
-	return drivers[driver].configureSensor(deviceID, sensorID, extraData);
-}
-
-function detachSensor(driver, deviceID, sensorID){
-	if(!drivers[driver]) return false;
-	return drivers[driver].unregisterSensor(deviceID, sensorID);
-}
-
-function getSensorValue(driver, deviceID, sensorID){
-	if(!drivers[driver]) return undefined;
-	return drivers[driver].getSensorValue(deviceID, sensorID);
-}
-
-function setActuatorValue(driver, deviceID, actuatorID, value){
-	if(!drivers[driver]) return undefined;
-	return drivers[driver].setActuatorValue(deviceID, actuatorID, value);
-}
-
-class Driver{
-	constructor(name){
-		this._handle = require(name);
-	}
-}
-
-/*setInterval(_saveChanges, 5 * 60 * 1000);
-
-process.on("exit", () => {
-	_saveChanges(true);
-});*/
-
 module.exports = {
-	loadDriver, installDriver, isDriverLoaded, getDriversForms, getInstalledDrivers, formattedNameToBaseName, baseNameToFormattedName, getDriversSensorForms, getLocationLayout, getLocationLabels, getDeviceSensorLayout, attachSensor, attachActuator, attachDevice, configureSensor, detachSensor, getSensorValue, setActuatorValue
+	getDriversForms: function(){
+		let forms = {};
+		let ports = managers.serial.getCachedSerialPorts();
+		for(const driver of Object.values(drivers)) {
+			let form = driver.configForm;
+			if(driver.supportedConnections !== undefined && driver.supportedConnections.length > 0){
+				for(let connectionType of driver.supportedConnections){
+					switch(connectionType) {
+						case "serial":
+							let serialPorts = [];
+							for(let port of ports){
+								serialPorts.push(port.comName + " (" + driver.getNameForSerialPort(port.vendorId, port.productId) + ")");
+							}
+							form.serialPort = {
+								type: "list",
+								isTitled: true,
+								title: "Serial Port",
+								items: serialPorts
+							};
+							break;
+						case "wifi":
+							// Not yet supported
+							break;
+						default:
+							break;
+					}
+				}
+			}
+			if(driver.deviceModels !== undefined){
+				form.model = {
+					type: "list",
+					isTitled: true,
+					title: "Model",
+					items: Object.keys(driver.deviceModels)
+				};
+			}
+			forms[driver.formattedName] = form;
+		}
+		return forms;
+	},
+	getInstalledDrivers: function(){
+		let names = [];
+		for(const driver of Object.values(drivers))
+			names.push(driver.formattedName);
+		return names;
+	},
+	getDriver: function(name){
+		if(name === undefined) return undefined;
+		let res = drivers[name];
+		if(res === undefined)
+			for(let driver of Object.values(drivers))
+				if(driver.formattedName === name){
+					res = driver;
+					break;
+				}
+		return res;
+	},
+	installDriver: function(driverPath){
+		return new Promise((resolve, reject) => {
+			if(!fs.existsSync(driverPath) || !fs.lstatSync(driverPath).isDirectory() || !fs.existsSync(path.join(driverPath, "package.json"))) {
+				reject("No valid driver was found on the provided path (" + driverPath + ")");
+				return;
+			}
+			try {
+				let name = fs.readJSONSync(path.join(driverPath, "package.json")).name;
+				if(driversFile.installed.indexOf(name) === -1){
+					fs.move(driverPath, path.join(driversDir, name)).then(() => {
+						driversFile.installed.push(name);
+						fs.writeJsonSync(driversJsonPath, driversFile);
+						resolve();
+					}).catch(reject);
+				} else
+					reject();
+			} catch (e) {
+				reject("Invalid driver package.json");
+			}
+		});
+	}
 };

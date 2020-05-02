@@ -10,10 +10,16 @@ const DF_FILE_CON_FROM_SLOT = 1;
 const DF_FILE_CON_TO_NODE = 2;
 const DF_FILE_CON_TO_SLOT = 3;
 
+/**
+ * Represents a slot name that also has type information
+ * @typedef {Object} Dataflow~TypedName
+ * @property {string} name The name of the slot
+ * @property {string} type The type of data that the slot handles
+ */
 class Dataflow {
 	/**
 	 * Creates a new dataflow from a dataflow structure of a file
-	 * @param fileStructure The dataflow structure, this structure comes from a JSON file that possess the following
+	 * @param {Object} fileStructure The dataflow structure, this structure comes from a JSON file that possess the following
 	 * format:
 	 * {
 	 *     nodes: [
@@ -38,15 +44,29 @@ class Dataflow {
 			this.loadFileStructure(fileStructure);
 	}
 	
+	/**
+	 * Connects two nodes in this dataflow
+	 * @param {Node} fromNode The node from where the connection will start
+	 * @param {number} fromIndex The output slot index of the start node
+	 * @param {Node} toNode The node to where the connection will go
+	 * @param {number} toIndex The input slot index of the end node
+	 * @param {boolean} dontEvaluate Whether the end node's hierarchical position should be evaluated and the node node
+	 * be moved to this position
+	 * @returns {boolean} True if the connection was made, false otherwise
+	 */
 	connect(fromNode, fromIndex, toNode, toIndex, dontEvaluate){
 		if(this._insideTree(fromNode) && this._insideTree(toNode)){
 			let success = fromNode.connectOutput(fromIndex, toNode, toIndex);
-			if(success && dontEvaluate === undefined) this._evaluateDeepness(toNode);
+			if(success && dontEvaluate !== true) this._evaluateDeepness(toNode);
 			return success;
 		}
 		return false;
 	}
 	
+	/**
+	 * Activates the nodes in this dataflow, layer by layer. If nodes required to the activation of other nodes fail, then
+	 * the activation of these nodes will fail aswell
+	 */
 	async activate(){
 		for(const node of this.flowTree[0])
 			await node.activate();
@@ -108,12 +128,31 @@ class Dataflow {
 		return result;
 	}
 	
+	/**
+	 * Inserts a node in this dataflow and moves it to it's correct hierarchical position
+	 * @param {Node} node The node to be inserted
+	 * @returns {boolean} True if the operation was a success, false otherwise
+	 */
 	addNode(node){
 		this._ensureTreeLevel(node.numberOfInputs);
 		this.flowTree[node.numberOfInputs].push(node);
 		return this._evaluateDeepness(node);
 	}
 	
+	/**
+	 * Registers a node type to this {@link Dataflow} instance
+	 * @param {string} title The node's title
+	 * @param {string} category The node's category
+	 * @param {Array.<(string|Dataflow~TypedName)>} inputLabels The names of the input slots, the size of this array will also determine the
+	 * number of input slots
+	 * @param {Array.<(string|Dataflow~TypedName)>} outputLabels The names of the output slots, the size of this array will also determine
+	 * the number of output slots
+	 * @param {function} workerFunction The function which will receive this node's input data and produce it's output
+	 * data, aswell as doing any other actions that should be made at the moment of the node activation
+	 * @param {Object.<string, *>} [defaultProperties] The default values for the properties of this node, this will be
+	 * used not only to define the defaults of each property, but also to define what properties the node has
+	 * @returns {string} The unique path of this node, or an empty string if the registration failed
+	 */
 	registerNode(title, category, inputLabels, outputLabels, workerFunction, defaultProperties){
 		let cat = Dataflow._cleanString(category);
 		let t = Dataflow._cleanString(title);
@@ -128,6 +167,14 @@ class Dataflow {
 		return "";
 	}
 	
+	/**
+	 * Creates a new {@link Node} instance of an already registered node type
+	 * @param {string} path The path of the node type, as returned by the {@link Dataflow#registerNode} function
+	 * @param {number} x The editor window x coordinate of this node
+	 * @param {number} y The editor window y coordinate of this node
+	 * @param {Object.<string, *>} properties The values for the properties of this node instance
+	 * @returns {Node|undefined} The generated node instance, or undefined if the creation failed
+	 */
 	createNode(path, x, y, properties){
 		let splitPath = path.split("/");
 		if(splitPath.length !== 2) return undefined;
@@ -143,8 +190,8 @@ class Dataflow {
 	
 	/**
 	 * Generates a JSON object compliant with the dataflow file format defined in the beginning of this file that contains
-	 * the current structure of this Dataflow object
-	 * @returns {*} The structure of this object as a JSON object
+	 * the current structure of this dataflow
+	 * @returns {Object} The structure of this object as a JSON object
 	 */
 	get fileStructure(){
 		this.structure.nodes = [];
@@ -257,6 +304,20 @@ class Dataflow {
 	
 	// TODO: Add support for undefined number of inputs
 	// TODO: Add default properties
+	/**
+	 * Registers a node type to all {@link Dataflow} instances
+	 * @param {string} title The node's title
+	 * @param {string} category The node's category
+	 * @param {Array.<(string|Dataflow~TypedName)>} inputLabels The names of the input slots, the size of this array will also determine the
+	 * number of input slots
+	 * @param {Array.<(string|Dataflow~TypedName)>} outputLabels The names of the output slots, the size of this array will also determine
+	 * the number of output slots
+	 * @param {function} workerFunction The function which will receive this node's input data and produce it's output
+	 * data, aswell as doing any other actions that should be made at the moment of the node activation
+	 * @param {Object.<string, *>} [defaultProperties] The default values for the properties of this node, this will be
+	 * used not only to define the defaults of each property, but also to define what properties the node has
+	 * @returns {string} The unique path of this node, or an empty string if the registration failed
+	 */
 	static registerGlobalNode(title, category, inputLabels, outputLabels, workerFunction, defaultProperties){
 		let cat = Dataflow._cleanString(category);
 		let t = Dataflow._cleanString(title);
@@ -284,6 +345,10 @@ class Dataflow {
 		return new Node(nodeSpec.inputLabels.length, nodeSpec.outputLabels.length, x, y, nodeSpec.workerFunction, properties);
 	}
 	
+	/**
+	 * The node paths available for any dataflow instance
+	 * @readonly
+	 */
 	static get registeredNodes(){
 		return Dataflow._registeredNodes;
 	}

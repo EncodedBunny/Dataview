@@ -253,20 +253,28 @@ function createForm(template, submitText, onSubmit){
 			span.setAttribute("style",(data.title === undefined ? "text-transform: capitalize;" : "") + "margin-right: 5px");
 			elementPanel.appendChild(span);
 		}
-		let obj;
+		let obj, inputable = true;
 		switch (data.type.toLowerCase()) {
 			case "textbox":
 				obj = document.createElement("input");
 				obj.type = "text";
 				break;
 			case "list":
-				obj = document.createElement("select");
-				for(const value of Object.values(data.items)) {
-					let item = document.createElement("option");
-					item.appendChild(document.createTextNode(value));
-					if(data.hasOwnProperty("value") && data.value === value)
-						item.setAttribute("selected","");
-					obj.appendChild(item);
+				let its = Object.values(data.items);
+				console.log(its, data, its.length <= 0, data.hasOwnProperty("emptyMessage"));
+				if(its.length <= 0 && data.hasOwnProperty("emptyMessage")){
+					obj = document.createElement("span");
+					obj.appendChild(document.createTextNode(data.emptyMessage));
+					inputable = false;
+				} else{
+					obj = document.createElement("select");
+					for(const value of its) {
+						let item = document.createElement("option");
+						item.appendChild(document.createTextNode(value));
+						if(data.hasOwnProperty("value") && data.value === value)
+							item.setAttribute("selected","");
+						obj.appendChild(item);
+					}
 				}
 				break;
 		}
@@ -280,6 +288,7 @@ function createForm(template, submitText, onSubmit){
 		if(data.hasOwnProperty("value"))
 			if(obj.tagName.toLowerCase() !== "select")
 				obj.setAttribute("value", data.value);
+		obj.setAttribute("required","");
 		root.appendChild(elementPanel);
 	}
 	let submit = document.createElement("button");

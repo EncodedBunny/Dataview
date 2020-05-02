@@ -2,12 +2,13 @@ module.exports = function(port){
 	const createError = require('http-errors');
 	const express = require('express');
 	const path = require('path');
-	const cookieParser = require('cookie-parser');
+	//const cookieParser = require('cookie-parser');
 	const logger = require('morgan');
 	const sassMiddleware = require('node-sass-middleware');
 	const http = require('http');
 	const url = require("url");
 	const favicon = require('serve-favicon');
+	const session = require("express-session");
 	
 	Array.prototype.remove = function(x) {
 		let i = this.indexOf(+x);
@@ -15,6 +16,8 @@ module.exports = function(port){
 			this.splice(i, 1);
 		return this;
 	};
+	
+	const users = require("./users");
 	
 	const driverManager = require('./driverManager');
 	const deviceManager = require('./deviceManager')(driverManager);
@@ -28,47 +31,80 @@ module.exports = function(port){
 	const settingsRouter = require('./routes/settings');
 
 	let app = express();
-
-	// view engine setup
-	app.set('views', path.join(__dirname, 'views'));
-	app.set('view engine', 'twig');
-
+	
 	app.use(logger('dev'));
 	app.use(express.json());
 	app.use(express.urlencoded({ extended: false }));
-	app.use(cookieParser());
+	//app.use(cookieParser());
+	
+	app.set("views", path.join(__dirname, "views"));
+	app.set("view engine", "twig");
+	app.disable("x-powered-by");
+	
+	let sessionConfig = {
+		secret: "The cake is a lie",
+		name: "dv_sid",
+		resave: false,
+		saveUninitialized: true,
+		cookie: {
+			maxAge: 1000*60*30,
+			httpOnly: true
+		}
+	};
+	
+	if(app.get("env") === "production") {
+		app.set("trust proxy", 1);
+		sessionConfig.cookie.secure = true;
+	}
+	
+	app.use((req, res, next) => {
+		res.setHeader("X-Frame-Options", "DENY");
+		res.setHeader("X-XSS-Protection", "1; mode=block");
+		res.setHeader("X-Content-Type-Options", "nosniff");
+		next();
+	});
+	
 	app.use(sassMiddleware({
-		src: path.join(__dirname, 'public'),
-		dest: path.join(__dirname, 'public'),
-		indentedSyntax: true, // true = .sass and false = .scss
+		src: path.join(__dirname, "public"),
+		dest: path.join(__dirname, "public"),
+		indentedSyntax: true,
 		sourceMap: true,
-		includePaths: path.join(__dirname, 'node_modules')
+		includePaths: path.join(__dirname, "node_modules")
 	}));
-	app.use(express.static(path.join(__dirname, 'public')));
+	app.use(express.static(path.join(__dirname, "public")));
 	app.use(favicon(path.join(__dirname, "public", "images", "favicon.ico")));
-
-	app.use('/', indexRouter);
-	app.use('/users', usersRouter);
-	app.use('/devices', devicesRouter);
-	app.use('/experiments', experimentsRouter);
-	app.use('/settings', settingsRouter);
-
-	// catch 404 and forward to error handler
+	
+	app.use(session(sessionConfig));
+	
+	app.use("/", indexRouter);
+	app.use((req, res, next) => {
+		if(!req.session.user && req.session.cookie)
+			res.clearCookie("dv_sid");
+		next();
+	});
+	app.use((req, res, next) => {
+		if(!req.session.user)
+			res.redirect("/");
+		else
+			next();
+	});
+	app.use("/users", usersRouter);
+	app.use("/devices", devicesRouter);
+	app.use("/experiments", experimentsRouter);
+	app.use("/settings", settingsRouter);
+	
 	app.use(function(req, res, next) {
 		next(createError(404));
 	});
-
-	// error handler
+	
 	app.use(function(err, req, res, next) {
-		// set locals, only providing error in development
 		res.locals.message = err.message;
 		res.locals.error = req.app.get('env') === 'development' ? err : {};
-
-		// render the error page
+		
 		res.status(err.status || 500);
 		res.render('error');
 	});
-
+	
 	app.server = http.createServer(app);
 	app.server.listen(port);
 
@@ -97,7 +133,7 @@ module.exports = function(port){
 				return path[1];
 			return "";
 		};
-		linkFunction("addDevice", deviceManager.addDevice,["name", "type", "extraData"]);
+		linkFunction("addDevice", deviceManager.addDevice,["name", "type", "extraData", "model"]);
 		linkFunction("getDevice", deviceManager.getDevice,["id"]);
 		linkFunction("getDevices", deviceManager.getDevices);
 		
@@ -149,8 +185,8 @@ module.exports = function(port){
 		});
 		
 		socket.on('disconnect', function() {
-			for(const device of deviceManager.getDeviceList())
-				device.removeListener(socket.id);
+			//for(const device of deviceManager.getDeviceList())
+			//	device.removeListener(socket.id);
 			for(const experiment of experimentManager.getExperimentList())
 				experiment.removeListener(socket.id);
 		});

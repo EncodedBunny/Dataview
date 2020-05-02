@@ -56,19 +56,6 @@ module.exports = function(deviceManager, driverManager, fileManager) {
 		return id;
 	};
 	
-	/*module.addSensorToExperiment = function(experimentID, deviceID, sensorID){
-		if(experiments[experimentID])
-			if(experiments[experimentID].addSensor(deviceID, sensorID))
-				return deviceManager.getDevice(deviceID).sensors[sensorID];
-		return undefined;
-	};
-	
-	module.removeSensorFromExperiment = function(experimentID, sensorID){
-		if(experiments[experimentID])
-			return experiments[experimentID].removeSensor(sensorID);
-		return false;
-	};*/
-	
 	module.getExperiment = function(id){
 		return experiments[id];
 	};
@@ -163,28 +150,6 @@ module.exports = function(deviceManager, driverManager, fileManager) {
 			});
 		}
 		
-		/*addSensor(deviceID, sensorID){
-			if(this._sensors[sensorID]) return false;
-			let dev = deviceManager.getDevice(deviceID);
-			let sen = deviceManager.getSensor(deviceID, sensorID);
-			if(dev && sen) {
-				this._sensors[sensorID] = deviceID; // TODO: Make sub arrays of device IDs
-				this._dataflow.registerNode(sen.type + " (" + dev.name + ")","Sensors",[],["time", "value"],async () => {
-					let start = Date.now();
-					let x = await driverManager.getSensorValue(dev.driver, deviceID, sensorID);
-					return [(Date.now()-start)/2, x];
-				});
-				return true;
-			}
-			return false;
-		}
-		
-		removeSensor(sensorID){
-			if(!this._sensors[sensorID]) return false;
-			delete this._sensors[sensorID]; // TODO: Clean places where sensor is used (Dataflows)
-			return true;
-		}*/
-		
 		setDataflowStructure(dataflowStructure){
 			if(!this._dataflow.verifyFileStructure(dataflowStructure)) return false;
 			this._dataflow.loadFileStructure(dataflowStructure);
@@ -212,8 +177,6 @@ module.exports = function(deviceManager, driverManager, fileManager) {
 		}
 		
 		loadFromFile(fileStructure){
-			/*for(const sensor of fileStructure.sensors)
-				this._sensors.push({sensor});*/
 			for(const g of fileStructure.graphs)
 				this.addGraph(g.title, g.axis.x, g.axis.y);
 		}
@@ -305,10 +268,6 @@ module.exports = function(deviceManager, driverManager, fileManager) {
 			return this._name;
 		}
 		
-		/*get sensors(){
-			return this._sensors;
-		}*/
-		
 		get graphs() {
 			return this._graphs;
 		}
@@ -330,16 +289,6 @@ module.exports = function(deviceManager, driverManager, fileManager) {
 				graphs.push({title: title, axisLabels: graph.axisLabels});
 			}
 			res.graphs = graphs;
-			/*let sensors = [];
-			for(const sensorID in this.sensors)
-				if(this.sensors.hasOwnProperty(sensorID))
-					sensors.push({
-						name: deviceManager.getSensor(this.sensors[sensorID], sensorID).type,
-						id: sensorID,
-						device: deviceManager.getDevice(this.sensors[sensorID]).name,
-						deviceID: this.sensors[sensorID]
-					});
-			res.sensors = sensors;*/
 			return res;
 		}
 	}

@@ -69,7 +69,7 @@
 		};
 		let locs = {{ availableLocations|json_encode|raw }};
 		let locLabels = {{ locationLabels|json_encode|raw }};
-		if(!Array.isArray(locs)){
+		if(!Array.isArray(locs) && !locs.hasOwnProperty("_io")){
 			baseForm.locType = {
 				type: "list",
 				isTitled: true,
@@ -94,6 +94,13 @@
 						locLayout.loc.items = locs[data.locType];
 					else
 						locLayout.loc.items = locs;
+					let capableLocs = [];
+					let neededCap = type.startsWith("S") ? "i" : "o";
+					for(let cap in locLayout.loc.items)
+						if(locLayout.loc.items.hasOwnProperty(cap))
+							if(cap.indexOf(neededCap) !== -1)
+								capableLocs.push(...locLayout.loc.items[cap]);
+					locLayout.loc.items = capableLocs;
 					displayWindow("Configure " + type, 450, createForm(locLayout, "add " + type, (locData) => {
 						socket.emit("add" + type, {deviceID: "{{ deviceID }}", name: data.name, location: {value: locData.loc, type: data.locType}, extraData: undefined}, (res) => {
 							if(!res) alert("An error has occurred");
