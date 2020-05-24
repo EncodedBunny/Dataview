@@ -2,16 +2,15 @@ const express = require('express');
 const router = express.Router();
 const users = require("../users");
 
-/* GET home page. */
-router.get('/', function(req, res, next) {
-	if(!req.session.user)
-		res.render('index', { title: 'Dataview Login' });
-	else
+router.get("/", function(req, res) {
+	if(!req.session.user){
+		res.render("index", { title: "Dataview Login" });
+	} else{
 		res.redirect("/devices");
+	}
 });
 
-router.post("/", (req, res, next) => {
-	console.log("User: " + req.body.user, "Password: " + req.body.password);
+router.post("/", (req, res) => {
 	if(req.body.user.length < 4 || req.body.user.length > 20){
 		sendError(res,"html","<label>Username must:</label><ul><li>Have between 4 and 20 characters</li><li>Only contain alphanumeric characters (a-z A-Z 0-9)</li></ul>");
 	} else{

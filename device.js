@@ -122,15 +122,6 @@ class Device{
 	}
 	
 	/**
-	 * @returns {{sensors: Object.<string, LocationHolder>, actuators: Object.<string, LocationHolder>, name: string, type: string}}
-	 * The information about this device that should be displayed to the user, delivered via WebSocket
-	 * @readonly
-	 */
-	get webInfo(){
-		return {name: this.name, type: this.deviceType, model: this.model, sensors: this.sensors, actuators: this.actuators};
-	}
-	
-	/**
 	 * Registers a sensor to a free location of this device
 	 * @param {string} id A global unique identifier for this sensor
 	 * @param {string} name The sensor's name

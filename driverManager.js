@@ -1,5 +1,6 @@
 const fs = require("fs-extra");
 const path = require("path");
+const npm = require("npm");
 let Driver = require("./driver");
 
 let driversDir = path.join(__dirname, "drivers");
@@ -68,10 +69,7 @@ module.exports = {
 		return forms;
 	},
 	getInstalledDrivers: function(){
-		let names = [];
-		for(const driver of Object.values(drivers))
-			names.push(driver.formattedName);
-		return names;
+		return Object.values(drivers);
 	},
 	getDriver: function(name){
 		if(name === undefined) return undefined;
@@ -87,22 +85,40 @@ module.exports = {
 	installDriver: function(driverPath){
 		return new Promise((resolve, reject) => {
 			if(!fs.existsSync(driverPath) || !fs.lstatSync(driverPath).isDirectory() || !fs.existsSync(path.join(driverPath, "package.json"))) {
-				reject("No valid driver was found on the provided path (" + driverPath + ")");
+				reject("No valid driver was found on the provided file");
 				return;
 			}
 			try {
 				let name = fs.readJSONSync(path.join(driverPath, "package.json")).name;
-				if(driversFile.installed.indexOf(name) === -1){
+				if(driversFile.installed.indexOf(name) === -1 && !drivers.hasOwnProperty(name)){
 					fs.move(driverPath, path.join(driversDir, name)).then(() => {
-						driversFile.installed.push(name);
-						fs.writeJsonSync(driversJsonPath, driversFile);
-						resolve();
+						npm.load({
+							loaded: false
+						},err => {
+							if(err){
+								reject(err);
+								return;
+							}
+							
+							npm.commands.install([path.join(driversDir, name)], (err2, data) => {
+								if(err2){
+									reject(err2);
+									return;
+								}
+								driversFile.installed.push(name);
+								fs.writeJsonSync(driversJsonPath, driversFile);
+								drivers[name] = new Driver(name, managers);
+								resolve(name);
+							});
+						});
 					}).catch(reject);
 				} else
-					reject();
+					reject("Driver already installed");
 			} catch (e) {
 				reject("Invalid driver package.json");
 			}
 		});
 	}
 };
+
+//module.exports.installDriver("C:/Users/User/Downloads/arduino-driver");

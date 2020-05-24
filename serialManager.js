@@ -75,6 +75,13 @@ module.exports = {
 		_processQueue(n);
 		return true;
 	},
+	changeDelimeter: function(name, delimiter){
+		if(delimiter !== undefined) {
+			ports[name].stream = ports[name].port.pipe(new Delimiter({delimiter: delimiter}));
+		} else{
+			ports[name].stream = ports[name].port;
+		}
+	},
 	closePort: function(name) {
 		let n = name.trim();
 		if(ports.hasOwnProperty(n)) {

@@ -1,5 +1,7 @@
-@import url('https://fonts.googleapis.com/css?family=Roboto&display=swap')
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap')
 @import url('https://fonts.googleapis.com/css?family=Ubuntu+Mono&display=swap')
+
+// Palette
 
 $primary: #303f9f
 $secondary: #2e7d32
@@ -10,16 +12,42 @@ $background-black: #000000
 $text: #fafafa
 $danger: #b71c1c
 $warning: #ffcc00
+$ok: #2e7d32
+
+// Mixins
 
 @mixin center
-	position: absolute
+	position: relative
 	top: 50%
 	left: 50%
 	transform: translate(-50%, -50%)
 
-@mixin focusable($color)
+@mixin hoverable($color)
+	&:hover:enabled
+		background-color: lighten($color, 5%)
+
+@mixin hoverableUnrestricted($color)
 	&:hover
 		background-color: lighten($color, 5%)
+
+@mixin activatable()
+	&:active
+		box-shadow: 0 6px 20px 1px rgba(black, 0.35)
+
+@mixin clickable($color)
+	@include hoverable($color)
+	@include activatable()
+
+@mixin button($bgColor)
+	cursor: pointer
+	@include hoverable($bgColor)
+	@include activatable()
+	transition: background-color 0.25s ease-in-out
+
+@mixin buttonfy($bgColor)
+	&.clickable
+		@include button($bgColor)
+		@include hoverableUnrestricted($bgColor)
 
 @mixin buttonTheme($color)
 	background-color: $color !important
@@ -28,11 +56,13 @@ $warning: #ffcc00
 	&:disabled
 		background-color: mix($color, $background-light, 60%) !important
 
+// Element style
+
 body
 	padding: 10px
 	background-color: $background
 	font-family: 'Roboto', sans-serif
-	font-size: 1rem
+	font-size: 1em
 	letter-spacing: 0.5px
 	color: $text
 	user-select: none
@@ -72,6 +102,9 @@ button
 		cursor: not-allowed !important
 		color: mix($text, $background-light, 60%) !important
 
+img
+	user-select: none
+
 span
 	display: inline-flex
 	align-items: center
@@ -107,6 +140,25 @@ select
 input::-webkit-calendar-picker-indicator:hover
 	background-color: $background-dark
 
+.fileInput > input[type=file]
+	width: 0
+	height: 0
+	opacity: 0
+	overflow: hidden
+	position: absolute
+	z-index: -1
+
+.fileInput > label
+	@include button($primary)
+	@include hoverableUnrestricted($primary)
+	color: $text
+	background-color: $primary
+	padding: 0.85em
+	& > img
+		height: 20px
+		margin-right: 5px
+		vertical-align: text-bottom
+
 ul
 	list-style: none
 	padding: 0
@@ -127,7 +179,7 @@ ul
 	justify-content: flex-start
 	background-color: $background-dark
 	li
-		@include focusable($background-dark)
+		@include hoverableUnrestricted($background-dark)
 		padding: 0
 		margin: 0
 		cursor: pointer
@@ -144,7 +196,7 @@ ul
 				display: flex
 				flex-direction: column
 				li
-					@include focusable($background-dark)
+					@include hoverableUnrestricted($background-dark)
 					position: relative
 					border-bottom: 1px solid darken($background-dark, 5%)
 					&:last-child
@@ -171,7 +223,7 @@ ul
 			background-color: $background-dark
 			width: 10em
 			a
-				@include focusable($background-dark)
+				@include hoverableUnrestricted($background-dark)
 				display: block
 				text-align: left
 
@@ -258,34 +310,8 @@ table
 
 .screenDivContainer
 	@include center
+	position: absolute
 	box-shadow: 0 0 17px -1px rgba($background-black, 0.75)
-
-.menuArrow
-	width: 16px
-	height: 16px
-	background-image: url("../images/arrow.svg")
-	background-repeat: no-repeat
-	margin: auto 8px auto 0
-	transition: transform 0.2s ease
-	&.active
-		transform: rotate(90deg)
-
-.warningIcon
-	display: inline-block
-	width: 28px
-	height: 27px
-	background-image: url("../images/warning.svg")
-	background-repeat: no-repeat
-	margin: 8px 0 8px 0
-
-.vbox
-	display: flex
-	flex-direction: column
-
-.hbox
-	display: flex
-	flex-direction: row
-	justify-content: stretch
 
 .waves-button
 	&.primary
@@ -295,34 +321,6 @@ table
 
 .content
 	margin-left: 200px
-
-h1
-	font-size: 3.5rem
-	letter-spacing: -1.5px
-
-h2
-	font-size: 2rem
-	letter-spacing: -0.5px
-
-h3
-	font-size: 1.5rem
-	letter-spacing: 0
-
-h4
-	font-size: 1.25rem
-	letter-spacing: 0.25px
-
-h1, h2
-	font-weight: 400
-
-h3, h4
-	font-weight: normal
-
-span.subHeader
-	letter-spacing: 0.15px
-
-.pageTitle, .pageSubtitle, h3
-	font-weight: normal
 
 .devicesGroupContainer
 	display: flex
@@ -369,26 +367,6 @@ span.subHeader
 	width: 95%
 	height: 95%
 
-.centerText
-	text-align: center
-
-.title
-	display: block
-	text-align: center
-	font-weight: normal
-	font-size: 1.5rem
-	padding-top: 0.67em
-
-.subtitle
-	display: block
-	color: darken($text, 10%)
-	font-weight: normal
-	font-style: italic
-	margin-top: 5px
-	&.inline
-		margin: 0
-		display: inline
-
 .lowerRight
 	position: absolute
 	bottom: 0
@@ -409,7 +387,8 @@ span.subHeader
 		background-color: rgba($background-light, 0.8)
 
 span.plusCircleText
-	@include center
+	display: block
+	line-height: 100%
 	font-size: 72pt
 	color: rgba($background-dark, 0.6)
 
@@ -457,28 +436,21 @@ li.menuItem
 				color: #c7c7c7
 
 .footer
-	//position: absolute
-	//bottom: 0
-	//right: 0
 	display: flex
 	flex-direction: row
 	justify-content: space-between
-	//width: 100%
 
 .window
-	//@include center
 	background-color: $background-dark
 	display: flex
 	flex-direction: column
-	//border-radius: 10px
 
 .windowTitleBar
 	background-color: darken($background-dark, 2%)
 	display: flex
 	flex-direction: row
 	justify-content: flex-end
-	//border-top-left-radius: 10px
-	//border-top-right-radius: 10px
+	min-height: 36px
 
 .windowTitleSpan
 	margin: auto
@@ -492,13 +464,20 @@ li.menuItem
 	margin-bottom: 50px
 	overflow-y: auto
 
+.statusWindowSide
+	display: inline-block
+	position: relative
+	height: 5vh
+	& > span
+		position: absolute
+		top: 50%
+		transform: translateY(-50%)
+
 .closeButton
-	@include focusable($background-dark)
+	@include hoverable($background-dark)
 	background-color: $background-dark !important
 	display: inline !important
 	margin: 0 !important
-	//border-top-right-radius: 10px !important
-	//border-bottom-right-radius: 0 !important
 	border-radius: 0 !important
 	&:hover
 		background-color: lighten($background-dark, 5%) !important
@@ -521,10 +500,11 @@ li.menuItem
 	margin: 0
 	top: 0
 	left: 0
-	z-index: 2
+	z-index: 3
 
 .centerElement
 	@include center
+	position: absolute
 
 .form
 	display: flex
@@ -538,9 +518,6 @@ li.menuItem
 	width: 100%
 	flex-grow: 1
 
-.errorText
-	color: lighten($danger, 5%)
-
 .errorStatus
 	text-align: center
 	margin-bottom: 60px
@@ -551,6 +528,126 @@ li.menuItem
 	margin-bottom: 0
 	text-align: center
 
+// Buttons
+
+.button, button
+	@include button($background-dark)
+	background-color: $background-dark
+	border-radius: 0.2em
+	padding: 0.85em 1.1em
+	color: $text
+	&:disabled, &.disabled
+		cursor: not-allowed
+		color: mix($text, $background-light, 60%)
+
+// Positioning
+
+.verticalCenter
+	position: relative
+	top: 50%
+	transform: translateY(-50%)
+
+.horizontalCenterElement
+	position: absolute
+	left: 50%
+	transform: translateX(-50%)
+
+.vbox
+	display: flex
+	flex-direction: column
+
+.hbox
+	display: flex
+	flex-direction: row
+	justify-content: stretch
+
+// Images
+
+.progressCircle
+	animation-name: rotateAndCenter
+	animation-duration: 2s
+	animation-iteration-count: infinite
+	animation-timing-function: linear
+
+.menuArrow
+	width: 16px
+	height: 16px
+	background-image: url("../images/arrow.svg")
+	background-repeat: no-repeat
+	margin: auto 8px auto 0
+	transition: transform 0.2s ease
+	&.active
+		transform: rotate(90deg)
+
+.warningIcon
+	display: inline-block
+	width: 28px
+	height: 27px
+	background-image: url("../images/warning.svg")
+	background-repeat: no-repeat
+	margin: 8px 0 8px 0
+
+// Text
+
+h1, .h1
+	font-size: 3em
+	letter-spacing: -1.5px
+
+h2, .h2
+	font-size: 2.25em
+	letter-spacing: -0.5px
+
+h3, .h3
+	font-size: 1.75em
+	letter-spacing: 0
+
+h4, .h4
+	font-size: 1.125em
+	letter-spacing: 0.25px
+
+h5, .h5
+	font-size: 24px
+	letter-spacing: 0
+
+h6, .h6
+	font-size: 20px
+	letter-spacing: 0.15px
+
+.buttonText, .button, button
+	font-size: 14px
+	text-transform: uppercase
+	letter-spacing: 1.25px
+
+h1, h2, .h1, .h2
+	font-weight: lighter
+
+h3, h4, h5, .h3, .h4, .h5, .pageTitle, .pageSubtitle
+	font-weight: normal
+
+h6, .h6, .buttonText, .button, button
+	font-weight: 500
+
+span.subHeader
+	letter-spacing: 0.15px
+
+.extra, .subtitle
+	color: darken($text, 10%)
+	font-style: italic
+
+.extra
+	font-size: 0.8em
+
+.subtitle
+	display: block
+	font-weight: normal
+	margin-top: 5px
+	&.inline
+		margin: 0
+		display: inline
+
+.errorText
+	color: lighten($danger, 5%)
+
 .stackTraceHeader
 	font-weight: normal
 	margin-bottom: -5px
@@ -560,3 +657,109 @@ li.menuItem
 	color: #ffffff
 	font-family: 'Ubuntu Mono', monospace
 	margin-left: 70px
+
+.centerText
+	text-align: center
+
+.title
+	display: block
+	text-align: center
+	font-weight: normal
+	font-size: 1.5rem
+	padding-top: 0.67em
+
+.okText
+	color: $ok
+.warningText
+	color: $warning
+.errorText
+	color: $danger
+
+// Lists
+
+.list
+	display: flex
+	flex-flow: column nowrap
+	justify-content: flex-start
+	align-items: stretch
+	background-color: rgba($background-dark, 0.2)
+	border-radius: 5px
+	padding: 10px
+	& > .item
+		height: 10vh
+		background-color: rgba($background-dark, 0.25)
+		margin-bottom: 10px
+		display: flex
+		border-radius: 5px
+		&:last-child
+			margin-bottom: 0
+		&.placeholder
+			border-style: dashed
+			border-color: rgba($background-dark, 0.5)
+			border-width: 10px
+			box-sizing: border-box
+			& > span
+				@include center
+				font-size: 1.75em
+				text-transform: uppercase
+				font-variant: all-small-caps
+				color: darken($text, 30%)
+				&.plus
+					font-size: 4em
+					font-variant: normal
+					font-weight: 400
+			&.clickable
+				cursor: pointer
+				&:hover
+					box-shadow: 0 6px 10px 1px rgba(black, 0.25)
+				@include activatable()
+		& > *
+			&:first-child
+				border-top-left-radius: 5px
+				border-bottom-left-radius: 5px
+			&:last-child
+				border-top-right-radius: 5px
+				border-bottom-right-radius: 5px
+			z-index: 1
+		& > .flag
+			width: 10px
+			height: 100%
+			background-color: $primary
+			order: 0
+			&.ok
+				background-color: $ok
+			&.warning
+				background-color: $warning
+			&.error
+				background-color: $danger
+		& > .content
+			display: inline-block
+			margin: 0
+			width: calc(90% - 10px)
+			background-color: $background-dark
+			padding: 10px 5px 10px 20px
+			order: 1
+			flex-grow: 9
+		& > .detail
+			display: inline-block
+			background-color: mix($background, $background-dark, 30%)
+			order: 2
+			padding: 10px 20px 10px 20px
+			@include buttonfy(mix($background, $background-dark, 30%))
+			& > *
+				@include center
+			&.danger
+				background-color: mix($danger, $background-dark, 50%)
+				@include buttonfy(mix($danger, $background-dark, 50%))
+		&.clickable, & > .clickable
+			&:hover, &:active
+				z-index: 2
+			@include activatable()
+
+// Animations
+
+@keyframes rotateAndCenter
+	0%
+		transform: translate(-50%, -50%) rotate(0deg)
+	100%
+		transform: translate(-50%, -50%) rotate(360deg)

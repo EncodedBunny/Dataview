@@ -15,23 +15,21 @@ module.exports = function (driverManager) {
 	 * @param {string} type The brand or model of this device, as it will be displayed to the user
 	 * @param {Object} extraData The device specific information obtained from the forms provided by the device's driver,
 	 * if the driver did not provide a form, then this parameter may be null
-	 * @returns {undefined|string} The id of the registered device, or undefined if an error occurred
+	 * @returns {Promise} The id of the registered device, or undefined if an error occurred
 	 */
 	module.addDevice = function(name, type, extraData, model){
-		if(!name) return undefined;
-		let nameT = name.trim();
-		if(nameT.length <= 0 || module.getDeviceByName(nameT) !== undefined) return undefined;
-		let driver = driverManager.getDriver(type);
-		let id;
-		do{
-			id = uuid();
-		} while(devices[id] !== undefined);
-		let device = new Device(id, nameT, extraData, type, model);
-		if(driver.attachDevice(device)){
-			devices[id] = device;
-			return id;
-		}
-		return undefined;
+		return new Promise((resolve, reject) => {
+			if(!name) return reject();
+			let nameT = name.trim();
+			if(nameT.length <= 0 || module.getDeviceByName(nameT) !== undefined) return reject();
+			let driver = driverManager.getDriver(type);
+			let id = uuid();
+			let device = new Device(id, nameT, extraData, type, model);
+			driver.attachDevice(device).then(() => {
+				devices[id] = device;
+				resolve(id);
+			}).catch(reject);
+		});
 	};
 	
 	/**
@@ -144,7 +142,7 @@ module.exports = function (driverManager) {
 	module.getDevices = function() {
 		let res = [];
 		for(const id of Object.keys(devices)) {
-			res.push({id: id, device: devices[id].webInfo});
+			res.push({id: id, device: devices[id]});
 		}
 		return res;
 	};

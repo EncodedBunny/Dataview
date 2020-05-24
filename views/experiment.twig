@@ -7,11 +7,7 @@
 {% block body %}
 	<h2>Experiment "{{ experiment.name }}"</h2>
 	<span class="subHeader">Current Measurement:
-	{% if experiment.measurement.type %}
-		{{ experiment.measurement.type }}
-	{% else %}
-		None
-	{% endif %}
+	{% if experiment.measurement.type %}{{ experiment.measurement.type }}{% else %}None{% endif %}
 	</span>
 	<div style="display: inline-flex; align-items: center">
 		<button class="waves-button waves-float waves-ripple" onclick="displayMeasurementSelector()" style="margin-top: 14px">Configure</button>
@@ -25,34 +21,8 @@
 			<span class="warningIcon" title="The experiment's dataflow is empty"></span>
 		{% endif %}
 	</div>
-	<!--<h3>Sensors</h3>
-	{#{% if experiment.sensors|length <= 0 %}
-		<div class="emptyTableDiv">
-			<span>This experiment does not have any sensors</span>
-		</div>
-	{% else %}
-		<table>
-			<thead>
-			<tr>
-				<th col-size="medium">Name</th>
-				<th col-size="medium">Device</th>
-				<th col-size="uuid">ID</th>
-			</tr>
-			</thead>
-			<tbody id="tableBody">
-			{% for sensorData in experiment.sensors %}
-				<tr>
-					<td col-size="medium">{{ sensorData.name }}</td>
-					<td col-size="medium">{{ sensorData.device }}</td>
-					<td col-size="uuid"><span class="highlightText">{{ sensorData.id }}</span></td>
-				</tr>
-			{% endfor %}
-			</tbody>
-		</table>
-	{% endif %}#}
-	<button class="waves-button waves-float waves-ripple blueButton" style="margin-left: 0" onclick="openAddSensorDialog()">Configure Sensors</button>-->
 	<h3>Graphs</h3>
-	<div class="devicesGroupContainer" id="graphsGroupContainer">
+	<div class="devicesGroupContainer">
 		<script type="text/javascript">
 			let graphs = {};
 		</script>
@@ -196,103 +166,13 @@
 			});
 		}
 		
-		/*function hasSensor(sensorID){
-			for(const sensor of experiment.sensors)
-				if(sensor.id === sensorID) return true;
-			return false;
-		}
-		
-		function changeBtnType(btn, shouldAdd){
-			btn.classList.toggle("dangerButton");
-			btn.classList.toggle("blueButton");
-			while(btn.lastChild) // TODO: Create function for this in graphicEnvironment
-				btn.removeChild(btn.lastChild);
-			btn.appendChild(document.createTextNode(shouldAdd ? "Add" : "Remove"));
-		}
-		
-		function openAddSensorDialog(){
-			let dialogRoot = document.createElement("ul");
-			dialogRoot.classList.add("menu");
-			for(const devData of {#{{ devices|json_encode|raw }}){
-				if(Object.keys(devData.device.sensors).length <= 0) continue;
-				let devLi = document.createElement("li");
-				devLi.classList.add("menuItem");
-				let devDiv = document.createElement("div");
-				devDiv.classList.add("menuItemHeader");
-				let arrowDiv = document.createElement("div");
-				arrowDiv.classList.add("menuArrow");
-				devDiv.appendChild(arrowDiv);
-				let devSpan = document.createElement("span");
-				devSpan.appendChild(document.createTextNode(devData.device.name));
-				devDiv.appendChild(devSpan);
-				devLi.appendChild(devDiv);
-				let senUl = document.createElement("ul");
-				senUl.classList.add("inner");
-				devSpan.onclick = arrowDiv.onclick = () => {
-					devLi.classList.toggle("active");
-					devDiv.classList.toggle("activeMenuItem");
-					arrowDiv.classList.toggle("active");
-					senUl.classList.toggle("active");
-				};
-				for(const sensorID of Object.keys(devData.device.sensors)){
-					let senLi = document.createElement("li");
-					senLi.classList.add("menuItem");
-					let senDiv = document.createElement("div");
-					senDiv.classList.add("menuItemHeader", "noChildren");
-					let senSpan = document.createElement("span");
-					senSpan.appendChild(document.createTextNode(devData.device.sensors[sensorID].name));
-					senDiv.appendChild(senSpan);
-					let added = hasSensor(sensorID);
-					let btn = document.createElement("button");
-					btn.classList.add(added ? "dangerButton" : "blueButton", "waves-button", "waves-float", "waves-ripple");
-					btn.appendChild(document.createTextNode(added ? "Remove" : "Add"));
-					btn.setAttribute("style", "margin-left: auto");
-					btn.onclick = () => {
-						let prevState = hasSensor(sensorID);
-						if(prevState){
-							socket.emit("removeSensorFromExperiment", {experimentID: "{{ experimentID }}", sensorID: sensorID}, (status) => {
-								if(status) {
-									for(const index in experiment.sensors)
-										if(experiment.sensors.hasOwnProperty(index) && experiment.sensors[index].id === sensorID){
-											experiment.sensors.splice(index, 1);
-											break;
-										}
-									changeBtnType(btn, true);
-								}
-							});
-						} else {
-							socket.emit("addSensorToExperiment", {experimentID: "{{ experimentID }}#}", deviceID: devData.id, sensorID: sensorID}, (sensor) => {
-								if(sensor) {
-									experiment.sensors.push(sensor);
-									changeBtnType(btn, false);
-								}
-							});
-						}
-					};
-					senDiv.appendChild(btn);
-					senLi.appendChild(senDiv);
-					senUl.appendChild(senLi);
-				}
-				devLi.appendChild(senUl);
-				dialogRoot.appendChild(devLi);
-			}
-			if(dialogRoot.children.length <= 0){
-				let noSensorSpan = document.createElement("span");
-				noSensorSpan.appendChild(document.createTextNode("No Sensor In Project"));
-				dialogRoot.appendChild(noSensorSpan);
-			}
-			displayWindow("Add Sensors To Experiment", 450, dialogRoot, {onClose: () => {
-				reload();
-			}, marginBottom: false, maxHeight: 70});
-		}*/
-		
 		function displayMeasurementSelector(){
 			let confTemplate = {
-				"type": {
+				"condition": {
 					"type": "list",
 					"isTitled": true,
-					"title": "Type",
-					"items": Object.keys(measurementTypes) // TODO: Get supported measurement types (maybe the intersection of all supported types from all devices related to this experiment)
+					"title": "Stop Condition",
+					"items": Object.keys(measurementTypes)
 				},
 				"frequency": {
 					"type": "textbox",
@@ -301,27 +181,37 @@
 				}
 			};
 			{% if experiment.measurement.type %}
-			confTemplate.type.value = "{{ experiment.measurement.type }}";
+			confTemplate.condition.value = "{{ experiment.measurement.type }}";
 			confTemplate.frequency.value = "{{ experiment.measurement.frequency }}";
 			{% endif %}
-			let typeWindow = displayWindow("Configure Measurement", 450, createForm(confTemplate, "next", (generalData) => {
+			let typeWindow = displayWindow("Configure Measurement", 450, createForm(confTemplate, "next", generalData => {
 				closeWindow(typeWindow);
-				let typeTemplate = measurementTypes[generalData.type].form;
+				let typeTemplate = measurementTypes[generalData.condition].form;
 				{% if experiment.measurement.type %}
-				if(generalData.type === "{{ experiment.measurement.type }}"){
+				if(generalData.condition === "{{ experiment.measurement.type }}"){
 					let data = {{ experiment.measurement.data|json_encode|raw }};
 					for(const field of Object.keys(data))
 						if(typeTemplate.hasOwnProperty(field))
 							typeTemplate[field].value = data[field];
 				}
 				{% endif %}
-				let confWindow = displayWindow("Configure Measurement", 450, createForm(typeTemplate, "done", (typeData) => {
-					socket.emit("setExperimentMeasurement", {id: "{{ experimentID }}", type: generalData.type, frequency: generalData.frequency, measurementData: typeData}, (res) => {
-						// TODO: Display message if it fails
-						closeWindow(confWindow);
+				let setExperiment = (measurementData) => {
+					socket.emit("setExperimentMeasurement", {
+						id: "{{ experimentID }}",
+						condition: generalData.condition,
+						frequency: generalData.frequency,
+						measurementData: measurementData
+					}, res => {
 						reload();
 					});
-				}));
+				};
+				if(!typeTemplate) {
+					setExperiment(undefined);
+				} else{
+					displayWindow("Configure Measurement", 450, createForm(typeTemplate, "done", typeData => {
+						setExperiment(typeData);
+					}));
+				}
 			}));
 		}
 		

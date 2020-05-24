@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>{% if success %}Success{% else %}Failed{% endif %}</title>
+	<link rel='stylesheet' href='/stylesheets/style.css' />
+</head>
+<body>
+<div>
+	<h1 class="{% if success %}ok{% else %}error{% endif %}Text centerText">{% if success %}Success{% else %}Failed{% endif %}</h1>
+	<h2 class="centerText">{{ message }}</h2>
+	<a href="{{ path }}" class="button horizontalCenterElement">Back</a>
+</div>
+</body>
+</html>

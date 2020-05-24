@@ -1,52 +1,28 @@
 {% extends 'layout.twig' %}
 
-{% block screen %}
-{% embed "templates/dataflowEditorContainer.twig" %}{% endembed %}
-{% endblock %}
-
 {% block body %}
 	<h2>Experiments</h2>
-	<div class="devicesGroupContainer" id="experimentsGroupContainer">
-		{% for experimentData in experiments %}
-			<div class="container" style="width: 300px; height: 200px">
-				<header>
-					<span class="centerText title">{{ experimentData.experiment.name }}</span>
-				</header>
-				<div class="mainView">
-					<span>Sensors: {{ experimentData.experiment.sensors.length }}</span>
-					<span>Graphs: {{ experimentData.experiment.graphs.length }}</span>
+	<div class="list">
+		{% for experiment in experiments %}
+			<div class="item">
+				<span class="flag {% if experiment.measurement.isActive %}ok{% elseif experiment.measurement.type %}warn{% else %}error{% endif %}"></span>
+				<div class="content">
+					<span class="h5 verticalCenter">{{ experiment.name }}<em class="extra">({{ experiment.graphs }} graphs)</em></span>
 				</div>
-				<footer class="footer">
-					<button class="dangerButton waves-light waves-button waves-float">Remove</button>
-					<button class="waves-light waves-button waves-float" onclick="enterSublink('{{ experimentData.id }}')">View</button>
-				</footer>
+				<div class="detail danger clickable">
+					<span class="buttonText">Remove</span>
+				</div>
+				<div class="detail clickable" onclick="enterSublink('{{ experiment.id }}')">
+					<span class="buttonText">View</span>
+				</div>
 			</div>
 		{% endfor %}
-		<div class="container placeholder" style="width: 300px; height: 200px;">
-			<div class="plusCircleButton" id="addExperiment">
-				<span class="plusCircleText">+</span>
-			</div>
+		<div class="item placeholder clickable" id="addExperiment">
+			<span class="plus">+</span>
 		</div>
 	</div>
 {% endblock %}
 
 {% block scripts %}
-	<script type="text/javascript" src="/javascripts/dataflowEditor.js"></script>
-	<script type="text/javascript">
-		const baseForm = {
-			"name": {"type": "textbox", "isTitled": true}
-		};
-		Waves.init();
-		document.getElementById("addExperiment").addEventListener("click", () => {
-			let newSensorWindow = displayWindow("Add New Experiment", 450, createForm(baseForm, "add", (data) => {
-				socket.emit("addExperiment", {name: data.name}, (uuid) => {
-					if(uuid !== undefined)
-						enterSublink(uuid);
-					else
-						alert("An error occurred");
-					closeWindow(newSensorWindow);
-				});
-			}));
-		});
-	</script>
+	<script type="text/javascript" src="/javascripts/page/experiments.js"></script>
 {% endblock %}

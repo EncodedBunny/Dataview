@@ -1,0 +1,40 @@
+{% extends 'layout.twig' %}
+
+{% block screen %}
+	<div>
+	
+	</div>
+{% endblock %}
+
+{% block body %}
+	<h2>Drivers</h2>
+	<h3>Install driver</h3>
+	<form action="/drivers/upload" method="post" enctype="multipart/form-data" style="display: inline-block; margin-right: 1em">
+		<div class="fileInput">
+			<input id="driverRoot" name="driverRoot" type="file" accept="application/zip"/>
+			<label for="driverRoot">
+				<img src="images/upload.svg" draggable="false" alt=""/>
+				<span id="fileInputText">Select Driver File</span>
+			</label>
+		</div>
+	</form>
+	<button id="installBtn" disabled>Install</button>
+	<h3>Installed</h3>
+	<div class="list">
+		{% for driver in drivers %}
+			<div class="item">
+				<span class="flag ok"></span>
+				<div class="content">
+					<span class="h5 verticalCenter">{{ driver.name }}<em class="extra">({{ driver.rawName }})</em></span>
+				</div>
+				<div class="detail clickable">
+					<span class="buttonText">View</span>
+				</div>
+			</div>
+		{% endfor %}
+	</div>
+{% endblock %}
+
+{% block scripts %}
+	<script type="text/javascript" src="/javascripts/page/drivers.js"></script>
+{% endblock %}

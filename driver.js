@@ -16,30 +16,41 @@ class Driver{
 		this._name = name;
 		this._folder = path.join(__dirname, "drivers", name);
 		this._driver = require(this._folder)(managers);
-		this._deviceJson = fs.readJsonSync(path.join(this._folder, "device.json"));
+		this._driverJson = fs.readJsonSync(path.join(this._folder, "driver.json"));
 		this._modelsJson = fs.pathExistsSync(path.join(this._folder, "models.json")) ? fs.readJsonSync(path.join(this._folder, "models.json")) : undefined;
 	}
 	
 	/**
 	 * Registers a non-registered device to this driver
 	 * @param {Device} device The non-registered device to be registered
-	 * @returns {boolean} True if the device was successfully registered, false if the device is already registered to
+	 * @returns {Promise} True if the device was successfully registered, false if the device is already registered to
 	 * a driver or an error occurred
 	 */
 	attachDevice(device){
-		if(!(device instanceof Device) && device.driver === undefined) return false;
-		if(this._driver.registerDevice(device.id, device.extraData)){
-			device._driver = this;
-			let locations = this.getLocationLayout(device.model);
-			if(typeof locations !== "object"){
-				locations = Driver._parseLocationData(locations);
-			} else
-				for(let type of Object.keys(locations))
-					locations[type] = Driver._parseLocationData(locations[type]);
-			device._locations = locations;
-			return true;
-		}
-		return false;
+		console.log("\t0", device);
+		return new Promise((resolve, reject) => {
+			console.log("\t1");
+			if(!(device instanceof Device) || device.driver !== undefined) return reject();
+			console.log("\t2");
+			this._driver.registerDevice(device.id, device.extraData).then(() => {
+				console.log("\t3");
+				device._driver = this;
+				let locations = this.getLocationLayout(device.model);
+				if(typeof locations !== "object"){
+					locations = Driver._parseLocationData(locations);
+				} else {
+					for (let type of Object.keys(locations))
+						locations[type] = Driver._parseLocationData(locations[type]);
+				}
+				console.log("\t4");
+				device._locations = locations;
+				resolve();
+			}).catch(err => {
+				console.log("\tE", err);
+				reject();
+			});
+			console.log("\t5");
+		});
 	}
 	
 	/**
@@ -137,7 +148,14 @@ class Driver{
 		if(this.deviceModels && this.deviceModels.hasOwnProperty(model) && this.deviceModels[model].hasOwnProperty("layout")){
 			return this.deviceModels[model].layout;
 		}
-		return this._deviceJson.locations.layout;
+		return this._driverJson.locations.layout;
+	}
+	
+	getExtraInputs(model){
+		if(this.deviceModels && this.deviceModels.hasOwnProperty(model) && this.deviceModels[model].hasOwnProperty("inputs")){
+			return this.deviceModels[model].inputs;
+		}
+		return this._driverJson.inputs;
 	}
 	
 	getNameForSerialPort(vendorId, productId){
@@ -161,15 +179,15 @@ class Driver{
 	 * @readonly
 	 */
 	get locationLabels(){
-		return this._deviceJson.locations.form;
+		return this._driverJson.locations.form;
 	}
 	
 	get configForm(){
-		return this._deviceJson.configForm;
+		return this._driverJson.configForm || {};
 	}
 	
 	get supportedConnections(){
-		return this._deviceJson.supportedConnections;
+		return this._driverJson.supportedConnections;
 	}
 	
 	get deviceModels(){
@@ -177,7 +195,11 @@ class Driver{
 	}
 	
 	get formattedName(){
-		return this._driver.formattedName;
+		return this._driverJson.name || this._name;
+	}
+	
+	get name(){
+		return this._name;
 	}
 	
 	/**
@@ -195,8 +217,12 @@ class Driver{
 		};
 		if(typeof data === "object"){
 			for(let type in data){
-				if(data.hasOwnProperty(type) && res.hasOwnProperty(type))
-					res[type] = Driver._parseLocationString(data[type]);
+				if(data.hasOwnProperty(type)){
+					let key = "_" + (type.length > 2 ? type.charAt(0).toLowerCase() : type.toLowerCase());
+					if(res.hasOwnProperty(key)) {
+						res[key] = Driver._parseLocationString(data[type]);
+					}
+				}
 			}
 		} else if(typeof data === "string"){
 			res._io = Driver._parseLocationString(data);

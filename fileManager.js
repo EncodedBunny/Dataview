@@ -1,4 +1,4 @@
-const fs = require("fs");
+const fs = require("fs-extra");
 const path = require("path");
 const dataviewDir = path.join(require("os").homedir(), "Documents", "Dataview");
 const graphsDir = path.join(dataviewDir, "Graphs");
@@ -7,6 +7,8 @@ module.exports = function(){
 	let module = {};
 	
 	module.fileTypes = ["JSON", "CSV", "Origin"];
+	module.userDir = dataviewDir;
+	module.tmpDir = path.join(__dirname, "tmp");
 	
 	module.ensureFolder = function(path){
 		if(!fs.existsSync(path))

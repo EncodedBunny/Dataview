@@ -16,6 +16,7 @@ addMenuItem("Overview", "/");
 addMenuItem("Devices", "/devices");
 addMenuItem("Experiments", "/experiments");
 addMenuItem("Settings", "/settings");
+addMenuItem("Drivers", "/drivers");
 
 window.onresize = () => {_processTableColumnSizes()};
 
@@ -24,8 +25,8 @@ window.onload = () => {_domReady = true};
 socket.emit("getDevicesAndExperiments", (data) => {
 	for(const deviceData of data.devices)
 		addMenuItem(deviceData.device.name, deviceData.id, "/devices", deviceData.device.type);
-	for(const expData of data.experiments)
-		addMenuItem(expData.experiment.name, expData.id, "/experiments");
+	for(const experiment of data.experiments)
+		addMenuItem(experiment.name, experiment.id, "/experiments");
 	if(_domReady)
 		generateMenu(window.location.pathname);
 	else
@@ -51,13 +52,15 @@ function displayWindow(title, width, content, options){
 	titleBar.appendChild(titleSpan);
 
 	let closeButton = document.createElement("button");
-	closeButton.classList.add("closeButton", "waves-effect", "waves-light", "waves-button");
-	closeButton.addEventListener("click", () => {
-		closeWindow(window);
-		if(options.onClose && typeof options.onClose === "function") options.onClose();
-	});
-	closeButton.appendChild(document.createTextNode("X"));
-	titleBar.appendChild(closeButton);
+	if(options.noClose !== true) {
+		closeButton.classList.add("closeButton", "waves-effect", "waves-light", "waves-button");
+		closeButton.addEventListener("click", () => {
+			closeWindow(window);
+			if (options.onClose && typeof options.onClose === "function") options.onClose();
+		});
+		closeButton.appendChild(document.createTextNode("X"));
+		titleBar.appendChild(closeButton);
+	}
 
 	window.appendChild(titleBar);
 	let windowContentHolder = document.createElement("div");
@@ -70,7 +73,7 @@ function displayWindow(title, width, content, options){
 
 	toggleScreenDiv(true);
 	windowContainer.appendChild(window);
-
+	
 	return window;
 }
 
@@ -177,7 +180,7 @@ function closeWindow(obj){
 
 function toggleScreenDiv(enable){
 	screenDivVisible = enable;
-	screenDiv.setAttribute("style", "opacity: " + (enable ? "100%" : 0) + "; " + (enable ? "z-index: 2" : ""));
+	screenDiv.setAttribute("style", "opacity: " + (enable ? "100%" : 0) + "; ");
 }
 
 /**
@@ -304,6 +307,56 @@ function createForm(template, submitText, onSubmit){
 	Waves.attach(submit, ['waves-light', 'waves-button', 'waves-float']);
 	root.appendChild(submit);
 	return root;
+}
+
+function createStatusWindow(executingMsg){
+	let root = document.createElement("div");
+	let left = document.createElement("div");
+	left.setAttribute("style","width: 20%; left: 0");
+	left.classList.add("statusWindowSide");
+	let progCircle = document.createElement("img");
+	progCircle.setAttribute("src", "images/progress.svg");
+	progCircle.setAttribute("draggable", "false");
+	progCircle.classList.add("centerElement", "progressCircle");
+	left.appendChild(progCircle);
+	let right = document.createElement("div");
+	right.setAttribute("style","width: 80%; right: 0");
+	right.classList.add("statusWindowSide");
+	let text = document.createElement("span");
+	text.innerText = executingMsg;
+	right.appendChild(text);
+	root.appendChild(left);
+	root.appendChild(right);
+	let update = (msg, svg, onClose) => {
+		text.innerText = msg;
+		
+		let close = document.createElement("button");
+		close.appendChild(document.createTextNode("Close"));
+		close.classList.add("lowerRight");
+		Waves.attach(close, ['waves-light', 'waves-button', 'waves-float']);
+		close.onclick = onClose;
+		root.appendChild(close);
+		
+		while(left.lastChild)
+			left.removeChild(left.lastChild);
+		
+		root.setAttribute("style","margin-bottom: 50px");
+		
+		let circle = document.createElement("img");
+		circle.setAttribute("src", "images/" + svg + ".svg");
+		circle.setAttribute("draggable", "false");
+		circle.classList.add("centerElement");
+		left.appendChild(circle);
+	};
+	return {
+		finish: (msg, onClose) => {
+			update(msg,"success", onClose);
+		},
+		error: (msg, onClose) => {
+			update(msg,"error", onClose);
+		},
+		content: root
+	};
 }
 
 function createButton(text, extra){

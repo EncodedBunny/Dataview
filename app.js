@@ -5,6 +5,9 @@ module.exports = function(port){
 	//const cookieParser = require('cookie-parser');
 	const logger = require('morgan');
 	const sassMiddleware = require('node-sass-middleware');
+	const fileUpload = require('express-fileupload');
+	//const postCssMiddleware = require('postcss-middleware');
+	//const autoprefixer = require("autoprefixer");
 	const http = require('http');
 	const url = require("url");
 	const favicon = require('serve-favicon');
@@ -29,6 +32,7 @@ module.exports = function(port){
 	const devicesRouter = require('./routes/devices')(driverManager, deviceManager);
 	const experimentsRouter = require('./routes/experiments')(deviceManager, experimentManager, fileManager);
 	const settingsRouter = require('./routes/settings');
+	const driversRouter = require('./routes/drivers')(driverManager, fileManager);
 
 	let app = express();
 	
@@ -63,6 +67,13 @@ module.exports = function(port){
 		res.setHeader("X-Content-Type-Options", "nosniff");
 		next();
 	});
+	app.use(fileUpload({
+		limits: {
+			fileSize: 10 * 1024 * 1024
+		},
+		useTempFiles: true,
+		tempFileDir: fileManager.tmpDir
+	}));
 	
 	app.use(sassMiddleware({
 		src: path.join(__dirname, "public"),
@@ -71,6 +82,17 @@ module.exports = function(port){
 		sourceMap: true,
 		includePaths: path.join(__dirname, "node_modules")
 	}));
+	/*app.use("stylesheets/", postCssMiddleware({
+		plugins: [autoprefixer()],
+		options: {
+			map: {
+				inline: true
+			}
+		},
+		src: req => {
+			return path.join(__dirname, "public", req.path);
+		}
+	}));*/
 	app.use(express.static(path.join(__dirname, "public")));
 	app.use(favicon(path.join(__dirname, "public", "images", "favicon.ico")));
 	
@@ -92,6 +114,7 @@ module.exports = function(port){
 	app.use("/devices", devicesRouter);
 	app.use("/experiments", experimentsRouter);
 	app.use("/settings", settingsRouter);
+	app.use("/drivers", driversRouter);
 	
 	app.use(function(req, res, next) {
 		next(createError(404));
@@ -120,8 +143,21 @@ module.exports = function(port){
 					else
 						args.push(data);
 				let result = fun.apply(undefined, args);
-				if (res && typeof res === "function") res(result);
-				else socket.emit(name, result);
+				let respond = () => {
+					if (res && typeof res === "function") res(result);
+					else socket.emit(name, result);
+				};
+				if(typeof result === "object" && typeof result.then === "function"){
+					result.then(res => {
+						result = res;
+						respond();
+					}).catch(err => {
+						result = err;
+						respond();
+					});
+				} else{
+					respond();
+				}
 			});
 		};
 		let checkAndGetFromUrl = function(parent){
@@ -137,7 +173,7 @@ module.exports = function(port){
 		linkFunction("getDevice", deviceManager.getDevice,["id"]);
 		linkFunction("getDevices", deviceManager.getDevices);
 		
-		socket.on("listenDevice", (deviceID) => {
+		socket.on("listenDevice", deviceID => {
 			let dev = deviceManager.getDevice(deviceID || checkAndGetFromUrl("devices"));
 			if(dev)
 				dev.addListener(socket.id, (updates) => { // TODO: Add this listener to default device listener function
@@ -158,10 +194,8 @@ module.exports = function(port){
 		linkFunction("addExperiment", experimentManager.addExperiment,["name"]);
 		linkFunction("getExperiment", experimentManager.getExperiment,["id"]);
 		linkFunction("getExperiments", experimentManager.getExperiments);
-		linkFunction("setExperimentMeasurement", experimentManager.setExperimentMeasurement,["id", "type", "frequency", "measurementData"]);
+		linkFunction("setExperimentMeasurement", experimentManager.setExperimentMeasurement,["id", "condition", "frequency", "measurementData"]);
 		linkFunction("updateExperimentDataflow", experimentManager.updateExperimentDataflow,["id", "dataflowStructure"]);
-		/*linkFunction("addSensorToExperiment", experimentManager.addSensorToExperiment,["experimentID", "deviceID", "sensorID"]);
-		linkFunction("removeSensorFromExperiment", experimentManager.removeSensorFromExperiment, ["experimentID", "sensorID"]);*/
 		linkFunction("beginExperiment", experimentManager.beginExperiment, ["id"]);
 		linkFunction("stopExperiment", experimentManager.stopExperiment, ["id"]);
 		linkFunction("addGraphToExperiment", experimentManager.addGraphToExperiment,["experimentID", "title", "xLbl", "yLbl", "saveType"]);
@@ -177,9 +211,22 @@ module.exports = function(port){
 			}
 		});
 		
+		socket.on("installDriver", (data, res) => {
+			console.log(data);
+			res(true);
+		});
+		
 		// TODO: Temporary fix, final fix will be to create a single manager that uses UUID namespaces
 		socket.on("getDevicesAndExperiments", (res) => {
-			let obj = {devices: deviceManager.getDevices(), experiments: experimentManager.getExperiments()};
+			let obj = {
+				devices: deviceManager.getDevices(),
+				experiments: experimentManager.getExperimentList().map(experiment => {
+					return {
+						name: experiment.name,
+						id: experiment.id
+					};
+				})
+			};
 			if(res && typeof res === "function") res(obj);
 			else socket.emit("getDevicesAndExperiments", obj);
 		});

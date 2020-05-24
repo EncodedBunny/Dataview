@@ -69,12 +69,14 @@
 		};
 		let locs = {{ availableLocations|json_encode|raw }};
 		let locLabels = {{ locationLabels|json_encode|raw }};
+		let locTypes;
 		if(!Array.isArray(locs) && !locs.hasOwnProperty("_io")){
+			locTypes = Object.keys(locs);
 			baseForm.locType = {
 				type: "list",
 				isTitled: true,
 				title: locLabels.locationTypeTitle,
-				items: Object.keys(locs)
+				items: locTypes
 			};
 		}
 		let locLayout = {
@@ -88,27 +90,37 @@
 		function _registerAddDialog(type){
 			document.getElementById("add" + type).addEventListener("click", () => {
 				baseForm.name.title = type + " Name";
+				let neededCap = type.startsWith("S") ? "i" : "o";
+				if(baseForm.hasOwnProperty("locType")){
+					baseForm.locType.items = locTypes.filter(loc => {
+						return _getTypeLocations(loc, neededCap).length > 0;
+					});
+				}
 				let window = displayWindow("Add New " + type, 450, createForm(baseForm, "next", (data) => {
 					closeWindow(window);
-					if(data.hasOwnProperty("locType"))
-						locLayout.loc.items = locs[data.locType];
-					else
-						locLayout.loc.items = locs;
-					let capableLocs = [];
-					let neededCap = type.startsWith("S") ? "i" : "o";
-					for(let cap in locLayout.loc.items)
-						if(locLayout.loc.items.hasOwnProperty(cap))
-							if(cap.indexOf(neededCap) !== -1)
-								capableLocs.push(...locLayout.loc.items[cap]);
-					locLayout.loc.items = capableLocs;
+					locLayout.loc.items = _getTypeLocations(data.locType, neededCap);
 					displayWindow("Configure " + type, 450, createForm(locLayout, "add " + type, (locData) => {
-						socket.emit("add" + type, {deviceID: "{{ deviceID }}", name: data.name, location: {value: locData.loc, type: data.locType}, extraData: undefined}, (res) => {
+						socket.emit("add" + type, {deviceID: "{{ deviceID }}", name: data.name, location: {value: locData.loc, type: data.locType}, extraData: undefined}, res => {
 							if(!res) alert("An error has occurred");
 							else reload();
 						});
 					}));
 				}));
 			});
+		}
+		
+		function _getTypeLocations(type, capability){
+			let items;
+			if(type)
+				items = locs[type];
+			else
+				items = locs;
+			let capableLocs = [];
+			for(let cap in items)
+				if(items.hasOwnProperty(cap))
+					if(cap.indexOf(capability) !== -1)
+						capableLocs.push(...items[cap]);
+			return capableLocs;
 		}
 		
 		function _displayReconfigureDialog(type, object){

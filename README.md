@@ -6,7 +6,7 @@ management of multiple equipment through a web platform.
 
 ##### High priority infrastructure
 - [ ] Web interface
-    - [ ] Welcome screen
+    - [x] Welcome screen
     - [x] Devices screen
     - [x] Sensors screen
     - [x] Experiments screen
@@ -35,12 +35,12 @@ management of multiple equipment through a web platform.
         - [ ] Bar
     - [ ] Sensor live raw data display
     - [ ] Non-linear axis
-- [ ] User authentication
+- [x] User authentication
 - [ ] Database backend for data storage
 
 ##### Future
 - [ ] Advanced data processing
 - [x] Multiple dataflow data types (Only single precision floats are currently supported)
 - [ ] Sensor value threshold notification
-- [ ] Common serial API for device drivers (In progress :hourglass_flowing_sand:)
+- [x] Common serial API for device drivers
 - [ ] Auto detection of derived physical unit

@@ -3,16 +3,16 @@
 {% block body %}
 	<h2>Devices</h2>
 	<div class="devicesGroupContainer" id="devicesGroupContainer">
-		{% for deviceData in devices %}
+		{% for device in devices %}
 			<div class="container" style="width: 300px; height: 300px">
 				<header>
-					<span class="centerText title">{{ deviceData.device.name }}</span>
-					<span class="centerText subtitle">{{ deviceData.device.type }}</span>
+					<span class="centerText title">{{ device.name }}</span>
+					<span class="centerText subtitle">{{ device.type }}</span>
 				</header>
 				<div class="mainView"></div>
 				<footer class="footer" style="flex-direction: column-reverse">
 					<!--<button class="dangerButton waves-light waves-button waves-float" onclick="">Remove</button>-->
-					<button class="waves-light waves-button waves-float" onclick="enterSublink('{{ deviceData.id }}')">View</button>
+					<button class="waves-light waves-button waves-float" onclick="enterSublink('{{ device.id }}')">View</button>
 				</footer>
 			</div>
 		{% endfor %}
@@ -49,14 +49,23 @@
 		};
 		Waves.init();
 		document.getElementById("addDevice").addEventListener("click", () => {
-			let newDeviceWindow = displayWindow("Add New Device", 450, createForm(baseForm, "next", (baseDevice) => {
+			let newDeviceWindow = displayWindow("Add New Device", 450, createForm(baseForm, "next", baseDevice => {
 				closeWindow(newDeviceWindow);
-				let configWindow = displayWindow("Add New " + baseDevice.device, 450, createForm(currentForm, "add device", (data) => {
-					socket.emit("addDevice", {name: baseDevice.name, type: baseDevice.device, extraData: data, model: data.model}, (uuid) => {
-						if(uuid) enterSublink(uuid);
-						else{
-							alert("An error occurred");
-							closeWindow(configWindow);
+				let configWindow = displayWindow("Add New " + baseDevice.device, 450, createForm(currentForm, "add device", data => {
+					let statusWin = createStatusWindow("Configuring device...");
+					setTimeout(() => {
+						closeWindow(configWindow);
+						displayWindow("Adding Device", 450, statusWin.content, { noClose: true, marginBottom: false });
+					}, 20);
+					socket.emit("addDevice", {name: baseDevice.name, type: baseDevice.device, extraData: data, model: data.model}, uuid => {
+						if(uuid){
+							statusWin.finish("Device successfully added", () => {
+								enterSublink(uuid);
+							});
+						} else{
+							statusWin.error("An error occurred while configuring the device", () => {
+								reload();
+							});
 						}
 					});
 				}));
