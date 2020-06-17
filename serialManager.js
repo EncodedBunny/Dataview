@@ -23,6 +23,9 @@ module.exports = {
 	},
 	openPort: function(name, options, cmdDelimiter, readySequence, onReady) {
 		let n = name.trim();
+		if(n.indexOf("(") > -1){
+			n = n.substring(0, n.indexOf("("));
+		}
 		if(!ports.hasOwnProperty(n)) {
 			ports[n] = {
 				port: new SerialPort(n, options),

@@ -211,11 +211,6 @@ module.exports = function(port){
 			}
 		});
 		
-		socket.on("installDriver", (data, res) => {
-			console.log(data);
-			res(true);
-		});
-		
 		// TODO: Temporary fix, final fix will be to create a single manager that uses UUID namespaces
 		socket.on("getDevicesAndExperiments", (res) => {
 			let obj = {
@@ -232,8 +227,6 @@ module.exports = function(port){
 		});
 		
 		socket.on('disconnect', function() {
-			//for(const device of deviceManager.getDeviceList())
-			//	device.removeListener(socket.id);
 			for(const experiment of experimentManager.getExperimentList())
 				experiment.removeListener(socket.id);
 		});
