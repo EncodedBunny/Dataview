@@ -303,7 +303,6 @@ class Dataflow {
 	}
 	
 	// TODO: Add support for undefined number of inputs
-	// TODO: Add default properties
 	/**
 	 * Registers a node type to all {@link Dataflow} instances
 	 * @param {string} title The node's title

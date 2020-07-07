@@ -417,7 +417,7 @@ class DataflowEditor{
 			this.canvasCtx.lineTo(this.activeSlotLine.end.x, this.activeSlotLine.end.y);
 			this.canvasCtx.stroke();
 			this.canvasCtx.lineWidth = DataflowEditor.slotCircleRadius;
-			this.canvasCtx.strokeStyle = this.colorPallette.line[this.activeSlotLine.type]; // TODO: Find better color
+			this.canvasCtx.strokeStyle = this.colorPallette.line[this.activeSlotLine.type];
 			this.canvasCtx.stroke();
 			this.canvasCtx.restore();
 		}

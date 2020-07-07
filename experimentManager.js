@@ -47,10 +47,31 @@ const measurementTypes = {
 	}
 };
 
+/**
+ * Listens to new data points generated on the graphs of an experiment
+ * @typedef {Object} ExperimentListener
+ * @property {Function} onGraphData Callback which will be called with a string that represents the graph's title, and
+ * an object which contains the x and y values of the generated point
+ * @property {Function} onEnd Callback which will be called once without arguments when the experiment's measurements
+ * are either finished or were cancelled
+ */
+
+/**
+ * Manages all the experiments, used to add/remove experiments, aswell as graphs to them
+ * @module ExperimentManager
+ */
 module.exports = function(deviceManager, driverManager, fileManager) {
+	/**
+	 * @exports ExperimentManager
+	 */
 	let module = {};
 	let experiments = {};
 	
+	/**
+	 * Adds a new experiment
+	 * @param {string} name The name of the new experiment
+	 * @returns {string} The id of this experiment
+	 */
 	module.addExperiment = function(name){
 		let id;
 		do{
@@ -60,53 +81,120 @@ module.exports = function(deviceManager, driverManager, fileManager) {
 		return id;
 	};
 	
+	/**
+	 * Gets an {@link Experiment} by it's id
+	 * @param {string} id The id of the experiment
+	 * @returns {Experiment|undefined} The experiment whose id matches the one given, or undefined if none are be found
+	 */
 	module.getExperiment = function(id){
 		return experiments[id];
 	};
 	
+	/**
+	 * Retrieves a list of all {@link Experiment}
+	 * @returns {Experiment[]} An array of the instances of the experiments
+	 */
 	module.getExperimentList = function(){
 		return Object.values(experiments);
 	};
 	
+	/**
+	 * Sets the measurement configuration for a given experiment
+	 * @param {string} id The id of the experiment
+	 * @param {string} condition The stopping condition for the measurement, represent the type of measurement that will
+	 * be made
+	 * @param {number} frequency The frequency, in milliseconds, at which a measurement will be made (in other words,
+	 * the frequency at which the dataflow of this experiment will be evaluated)
+	 * @param {Object} measurementData Additional condition specific information
+	 * @returns {boolean} True if the measurement was successfully configured, false otherwise
+	 */
 	module.setExperimentMeasurement = function(id, condition, frequency, measurementData){
 		if(experiments[id] && measurementTypes[condition])
 			return experiments[id].setMeasurementType(condition, frequency, measurementData);
 		return false;
 	};
 	
+	/**
+	 * Changes the dataflow structure of an experiment
+	 * @param {string} id The id of the experiment
+	 * @param {Object} dataflowStructure The new node structure of this experiment's dataflow
+	 * @returns {boolean} True if the dataflow structure was changed, false otherwise
+	 */
 	module.updateExperimentDataflow = function(id, dataflowStructure){
 		if(experiments[id])
 			return experiments[id].setDataflowStructure(dataflowStructure);
 		return false;
 	};
 	
+	/**
+	 * Starts measurements in a experiment according to the measurement configuration in said experiment, the experiment
+	 * must not be currently executing measurements and must be already be configured to do measurements
+	 * @param {string} id The id of the experiment
+	 * @returns {boolean} True if measurements have started, false otherwise
+	 */
 	module.beginExperiment = function(id){
 		if(experiments[id])
 			return experiments[id].beginMeasurement();
 		return false;
 	};
 	
+	/**
+	 * Stops ongoing measurements in an experiment, the experiment must be currently executing measurements
+	 * @param {string} id The id of the experiment
+	 * @returns {boolean} True if measurements were stopped, false otherwise
+	 */
 	module.stopExperiment = function(id){
 		if(experiments[id])
 			return experiments[id].cancelActiveMeasurement();
 		return false;
 	};
 	
+	/**
+	 * Attaches a new graph to an experiment, and makes it available in the dataflow editor of this experiment
+	 * @param {string} id The id of the experiment
+	 * @param {string} title The title of the graph
+	 * @param {string} xLbl The x-axis label
+	 * @param {string} yLbl The y-axis label
+	 * @param {string} saveType The type of format to use in the graph's save file
+	 * @returns {boolean} True if the graph was successfully added, false otherwise
+	 */
 	module.addGraphToExperiment = function(id, title, xLbl, yLbl, saveType){
 		if(experiments[id])
 			return experiments[id].addGraph(title, xLbl, yLbl, saveType);
 		return false;
 	};
 	
+	/**
+	 * Attaches an {@link ExperimentListener} to the experiment represented by the given id
+	 * @param {string} id The id of the experiment
+	 * @param {string} listenerID The id of this listener
+	 * @param {ExperimentListener} listener The listener to be attached
+	 * @returns {boolean} True if the listener was attached, false otherwise
+	 */
 	module.listenToExperiment = function(id, listenerID, listener){
 		if(experiments[id])
 			return experiments[id].addListener(listenerID, listener);
 		return false;
 	};
 	
+	/**
+	 * Gets the available measurement types (a.k.a. stop conditions)
+	 * @returns {Object} An object containing the available measurement types, whose keys are the names of the
+	 * stopping criteria
+	 */
 	module.getMeasurementTypes = () => {return measurementTypes};
 	
+	/**
+	 * Represents an experiment
+	 */
 	class Experiment{
+		/**
+		 * Constructs a new experiment
+		 * @param {string} name The name of the experiment
+		 * @param {string} id The id of the experiment
+		 * @param {Object} [dataflowStructure] The dataflow structure to be used by this experiment, or undefined to
+		 * create an empty dataflow
+		 */
 		constructor(name, id, dataflowStructure) {
 			this._name = name;
 			this._id = id;
@@ -146,39 +234,33 @@ module.exports = function(deviceManager, driverManager, fileManager) {
 					possibleValues: ["Milliseconds", "Seconds", "Minutes", "Hours"]
 				}
 			});
+			
+			if(!fileManager.experimentHasSaveFile(name)){
+				fileManager.saveExperiment(this._name, this._id, dataflowStructure);
+			}
 		}
 		
+		/**
+		 * Sets the structure of the dataflow
+		 * @param {Object} dataflowStructure The new structure to be used
+		 * @returns {boolean} True if the dataflow structure was changed, false if the structure provided is not valid
+		 */
 		setDataflowStructure(dataflowStructure){
 			if(!this._dataflow.verifyFileStructure(dataflowStructure)) return false;
 			this._dataflow.loadFileStructure(dataflowStructure);
+			fileManager.saveExperiment(this.name, this.id, dataflowStructure);
 			return true;
 		}
 		
-		addOutput(title, labels, format){
-			if(typeof title !== "string" || title.length <= 0) return false;
-			for(const output of this._outputs) {
-				if(output.title === title) {
-					return false;
-				}
-			}
-			
-			let output = new Output(title, labels, format);
-			if(this._measurement !== undefined && this._measurement.start >= 0)
-				graph.saveFile = fileManager.createGraphSave(this._name, this._measurement.start, graph, saveType);
-			this._graphs.push(graph);
-			
-			this._dataflow.registerNode(title + " Graph","Graph",["x", "y"],[],(input) => {
-				let point = {x: input[0], y: input[1]};
-				graph.addData(point);
-				for(const listener of Object.values(this._listeners))
-					listener.onGraphData(title, point);
-				if(graph.data.length >= 25)
-					Experiment._saveGraph(graph);
-				return [];
-			});
-			return true;
-		}
-		
+		/**
+		 * Adds a new graph
+		 * @param {string} title The title of the graph
+		 * @param {string} xLbl The x-axis label
+		 * @param {string} yLbl The y-axis label
+		 * @param {string} saveType The format in which the graph's file will be saved
+		 * @returns {boolean} True if the graph was added, false if a graph with this title already exists in this
+		 * experiment
+		 */
 		addGraph(title, xLbl, yLbl, saveType){
 			if(typeof title !== "string" || title.length <= 0) return false;
 			for(const graph of this._graphs) {
@@ -204,12 +286,16 @@ module.exports = function(deviceManager, driverManager, fileManager) {
 			return true;
 		}
 		
-		loadFromFile(fileStructure){
-			for(const g of fileStructure.graphs)
-				this.addGraph(g.title, g.axis.x, g.axis.y);
-		}
-		
+		/**
+		 * Sets the measurement type
+		 * @param {string} measurement The name of the measurement type to be used
+		 * @param {number} frequency The frequency, in milliseconds, at which measurements will be made
+		 * @param {Object} measurementData Additional measurement type specific information
+		 * @returns {boolean} True if the measurement type was changed, false if the measurement name does not correspond
+		 * to a valid measurement type, or if the frequency is not a number greater than zero
+		 */
 		setMeasurementType(measurement, frequency, measurementData){
+			if(!measurementTypes.hasOwnProperty(measurement) || frequency <= 0) return false;
 			this._measurement = {
 				type: measurement,
 				frequency: frequency,
@@ -224,6 +310,11 @@ module.exports = function(deviceManager, driverManager, fileManager) {
 			return true;
 		}
 		
+		/**
+		 * Starts executing measurements
+		 * @returns {boolean} True if measurements have begun, false if measurements are already being executed or if
+		 * this experiment is not yet configured to run measurements
+		 */
 		beginMeasurement(){
 			if(this._measurement !== undefined && this._measurementTask !== undefined && this._measurementTask.task === undefined){
 				this._measurement.start = Date.now();
@@ -233,7 +324,7 @@ module.exports = function(deviceManager, driverManager, fileManager) {
 				this._measurementTask.task = setInterval(measurementTypes[this._measurement.type].createTask(this._measurement.data, this, () => {
 					this._measurement.sample++;
 					this._dataflow.activate().catch(err => {
-						console.error("At " + Date.now() + " an error occurred while trying to activate a dataflow:", err);
+						console.error("At " + Date.now() + " an error occurred while trying to execute a dataflow:", err);
 					});
 				}), this._measurement.frequency);
 				this._measurement.isActive = true;
@@ -311,44 +402,12 @@ module.exports = function(deviceManager, driverManager, fileManager) {
 		}
 	}
 	
+	for(let experiment of fileManager.getSavedExperiments()){
+		experiments[experiment.id] = new Experiment(experiment.name, experiment.id, experiment.dataflow);
+	}
+	
 	return module;
 };
-
-class Output {
-	constructor(title, dimensionLabels, saveFormat){
-		this._title = title;
-		this._dimensionLabels = dimensionLabels;
-		this._dimension = dimensionLabels.length;
-		this._format = saveFormat;
-		this._data = [];
-	}
-	
-	addData(data){
-		if((!Array.isArray(data) && this._dimension > 1) || data.length !== this._dimension) return false;
-		this._data.push(data);
-		return true;
-	}
-	
-	get title(){
-		return this._title;
-	}
-	
-	get dimensionLabels(){
-		return this._dimensionLabels;
-	}
-	
-	get dimension(){
-		return this._dimension;
-	}
-	
-	get format(){
-		return this._format;
-	}
-	
-	get data(){
-		return this._data;
-	}
-}
 
 /*
  *	An experiment's graph contains a single dataflow object responsible for processing

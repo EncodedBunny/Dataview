@@ -3,9 +3,13 @@ const uuid = require("uuid/v4");
 let Device = require("./device");
 
 /**
+ * Manages all the devices, used to add/remove devices, aswell as sensors and actuators to them
  * @module DeviceManager
  */
 module.exports = function (driverManager) {
+	/**
+	 * @exports DeviceManager
+	 */
 	let module = {};
 	let devices = {};
 	
@@ -47,7 +51,7 @@ module.exports = function (driverManager) {
 		if(senName <= 0) return false;
 		let device = devices[deviceID];
 		if(!device) return false;
-		let id = uuid(); // TODO: Verify uniqueness with respect to all devices (or a faster alternative, maybe global UUIDs)
+		let id = uuid();
 		if(device.addSensor(id, senName, location, extraData)){
 			Dataflow.registerGlobalNode(senName + " (" + device.name + ")", "Sensors", [], ["value"], async () => {
 				let x = await device.driver.getSensorValue(device.id, id);
@@ -73,7 +77,7 @@ module.exports = function (driverManager) {
 		if(actName <= 0) return false;
 		let device = devices[deviceID];
 		if(!device) return false;
-		let id = uuid(); // TODO: Verify uniqueness with respect to all devices (or a faster alternative, maybe global UUIDs)
+		let id = uuid();
 		if(device.addActuator(id, actName, location, extraData)){
 			Dataflow.registerGlobalNode(actName + " (" + device.name + ")", "Actuators", ["value"], [], async (input) => {
 				try {

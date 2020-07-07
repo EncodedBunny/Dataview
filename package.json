@@ -15,11 +15,10 @@
     "@serialport/parser-delimiter": "latest",
     "@serialport/parser-ready": "latest",
     "adm-zip": "^0.4.14",
-    "arduino-driver": "file:drivers/arduino-driver",
     "autoprefixer": "^9.7.6",
     "cookie-parser": "~1.4.4",
-    "cr10x-driver": "file:drivers/cr10x-driver",
     "debug": "~2.6.9",
+    "electron": "^9.0.5",
     "express": "~4.16.1",
     "express-fileupload": "^1.1.7-alpha.3",
     "express-session": "^1.17.0",
@@ -35,5 +34,6 @@
     "serve-favicon": "^2.5.0",
     "socket.io": "^2.2.0",
     "twig": "~0.10.3"
-  }
+  },
+  "devDependencies": {}
 }

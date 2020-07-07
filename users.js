@@ -9,13 +9,14 @@ try{
 
 const usersFile = path.join(__dirname, "users.json");
 let users = {};
+let pendingUpdate = -1;
 
 if(!fs.existsSync(usersFile))
 	fs.writeFileSync(usersFile, JSON.stringify(users));
 else{
 	let fileContent;
 	try{
-		fileContent = JSON.parse(fs.readFileSync(usersFile));
+		fileContent = JSON.parse(fs.readFileSync(usersFile).toString("utf8"));
 	} catch(e){
 		throw "Error while reading users file: " + e;
 	}
@@ -53,18 +54,21 @@ module.exports = {
 					resolve({
 						username: user
 					});
-					fs.writeFileSync(usersFile, JSON.stringify(users),err => console.log(err));
+					fs.writeFileSync(usersFile, JSON.stringify(users));
 				});
-				return true;
 			});
 		});
 	}
 };
 
-// module.exports.registerUser("test", "c0cb468ff9d6577f30a9a5eeb2099401a87cb552ab7e1d4931934edc07699df3");
-// module.exports.registerUser("test2", "password");
-// module.exports.registerUser("username123", "pAsWoRd");
-// module.exports.registerUser("test32", "123se123");
+fs.watch(usersFile, () => {
+	if(pendingUpdate === -1){
+		pendingUpdate = setTimeout(() => {
+			pendingUpdate = -1;
+			users = JSON.parse(fs.readFileSync(usersFile).toString("utf8"));
+		}, 1000);
+	}
+});
 
 function _hash(password, salt, callback){
 	crypto.pbkdf2(password, salt, 10000, 64, "sha512", (err, dKey) => {

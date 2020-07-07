@@ -1,0 +1,198 @@
+@font-face {
+	font-family: "Roboto";
+	src: url("font/Roboto-Light.ttf") format("truetype");
+	font-weight: 300;
+}
+
+@font-face {
+	font-family: "Roboto";
+	src: url("font/Roboto-Regular.ttf") format("truetype");
+	font-weight: normal;
+}
+
+@font-face {
+	font-family: "Roboto";
+	src: url("font/Roboto-Medium.ttf") format("truetype");
+	font-weight: 500;
+}
+
+@font-face {
+	font-family: "Roboto";
+	src: url("font/Roboto-Bold.ttf") format("truetype");
+	font-weight: bold;
+}
+
+html, body{
+	height: 100%;
+	overflow: hidden;
+}
+
+body{
+	background-color: #f7feff;
+	color: #1c1c1c;
+	padding: 20px;
+	font-family: Roboto, sans-serif;
+	user-select: none;
+}
+
+input[type=text], input[type=password], input[type=number] {
+	display: block;
+	width: 100%;
+	margin-left: 0;
+	margin-right: 0;
+	border-top: none;
+	border-right: none;
+	border-left: none;
+	border-bottom: solid #aeaeae 2px;
+	outline: none;
+	background-color: transparent;
+	font-family: 'Roboto', sans-serif;
+	color: #050505;
+	height: 24px;
+	font-size: 18px;
+	transition: border-bottom 0.3s ease-in-out;
+}
+input[type=text]:hover, input[type=password]:hover, input[type=number]:hover {
+	border-bottom: solid #6f6f6f 2px;
+}
+input[type=text]:focus, input[type=password]:focus, input[type=number]:focus {
+	border-bottom: solid #5161ca 2px;
+}
+input[type=text]:invalid, input[type=password]:invalid, input[type=number]:invalid {
+	border-bottom: solid #b71c1c 2px;
+}
+
+.container{
+	background-color: #edf6f7;
+	border-radius: 5px;
+	padding: 10px;
+}
+
+.button{
+	color: inherit;
+	text-decoration: none;
+	background-color: #c3e2e6;
+	padding: 0.85em 1.1em;
+	border-radius: 5px;
+	cursor: pointer;
+	font-size: 14px;
+	text-transform: uppercase;
+	letter-spacing: 1.25px;
+}
+.button:hover{
+	background-color: #cce7eb;
+}
+.button:active{
+	box-shadow: 0 3px 10px 1px rgba(28, 28, 28, 0.25);
+}
+
+label {
+	display: block;
+	font-size: 14px;
+	font-family: inherit;
+}
+
+/*
+	Switch
+	Credits to: https://www.w3schools.com/howto/howto_css_switch.asp
+ */
+
+.switch {
+	position: relative;
+	display: inline-block;
+	width: 38px;
+	height: 25px;
+}
+
+.switch > input {
+	opacity: 0;
+	width: 0;
+	height: 0;
+}
+
+.slider {
+	position: absolute;
+	cursor: pointer;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: #ccc;
+	transition: background-color 0.4s;
+	border-radius: 30px;
+}
+
+.slider:before {
+	position: absolute;
+	content: "";
+	border-radius: 50%;
+	height: 17px;
+	width: 17px;
+	left: 4px;
+	bottom: 4px;
+	background-color: white;
+	transition: transform 0.4s;
+}
+
+input[type=checkbox]:checked + .slider {
+	background-color: #1ed975;
+}
+
+input:checked + .slider:before {
+	transform: translateX(13px);
+}
+
+.switchContainer div{
+	margin-right: 5px;
+}
+
+.switchContainer > label{
+	line-height: 25px;
+	vertical-align: bottom;
+}
+
+h1, .h1{
+	font-size: 3em;
+	letter-spacing: -1.5px;
+}
+
+h2, .h2{
+	font-size: 2.25em;
+	letter-spacing: -0.5px;
+}
+
+h3, .h3{
+	font-size: 1.75em;
+	letter-spacing: 0;
+}
+
+h4, .h4{
+	font-size: 1.125em;
+	letter-spacing: 0.25px;
+}
+
+h5, .h5{
+	font-size: 24px;
+	letter-spacing: 0;
+}
+
+h6, .h6{
+	font-size: 20px;
+	letter-spacing: 0.15px;
+}
+
+h1, h2, h3, h4, h5, h6{
+	text-align: center;
+}
+
+h1, h2, .h1, .h2{
+	font-weight: lighter;
+}
+
+h3, h4, h5, .h3, .h4, .h5{
+	font-weight: normal;
+}
+
+h6, .h6, .button, label{
+	font-weight: 500;
+}

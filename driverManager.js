@@ -27,7 +27,16 @@ function baseNameToFormattedName(name){
 	return (drivers[name] ? drivers[name].formattedName : undefined);
 }
 
+/**
+ * Manages the installed drivers
+ * @module DriverManager
+ */
 module.exports = {
+	/**
+	 * Retrieves the device configuration forms for all the installed drivers
+	 * @returns {Object} An object that can be used to build a user interface to retrieve the information needed by each
+	 * driver to configure a device
+	 */
 	getDriversForms: function(){
 		let forms = {};
 		let ports = managers.serial.getCachedSerialPorts();
@@ -68,9 +77,20 @@ module.exports = {
 		}
 		return forms;
 	},
+	/**
+	 * Retrieves a list of all loaded drivers
+	 * @returns {Driver[]} An array containing the instances of all loaded drivers
+	 */
 	getInstalledDrivers: function(){
 		return Object.values(drivers);
 	},
+	/**
+	 * Retrieves a single driver by it's module name or by it's display name, attempting first to find the driver by the
+	 * former name
+	 * @param {string} name The module name or display name of the driver
+	 * @returns {Driver|undefined} The instance of the requested driver, or undefined if a driver with the given name
+	 * could not be found
+	 */
 	getDriver: function(name){
 		if(name === undefined) return undefined;
 		let res = drivers[name];
@@ -82,6 +102,12 @@ module.exports = {
 				}
 		return res;
 	},
+	/**
+	 * Attempts to install the driver located at the given folder as a node module
+	 * @param {string} driverPath The path of the folder containing a valid driver
+	 * @returns {Promise} A promise that resolves with the module name of driver if the installation was successful, or
+	 * rejects with a string informing the error that occurred
+	 */
 	installDriver: function(driverPath){
 		return new Promise((resolve, reject) => {
 			if(!fs.existsSync(driverPath) || !fs.lstatSync(driverPath).isDirectory() || !fs.existsSync(path.join(driverPath, "package.json"))) {

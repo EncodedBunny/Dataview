@@ -92,7 +92,7 @@ function displayEditor(dataflow, onClose){
 		propMenu.setAttribute("style","max-width: " + canvas.width*0.2 + "px; height: " + canvas.height + "px");
 		
 		let propMenuBody = document.getElementById("propMenuBody");
-		
+				
 		let close = document.getElementById("editorMenu-close");
 		close.onclick = () => {
 			if(typeof onClose === "function") onClose();

@@ -1,7 +1,7 @@
-const fs = require("fs-extra");
+const fs = require("fs");
 const path = require("path");
 const dataviewDir = path.join(require("os").homedir(), "Documents", "Dataview");
-const graphsDir = path.join(dataviewDir, "Graphs");
+const experimentsDir = path.join(dataviewDir, "Experiments");
 
 module.exports = function(){
 	let module = {};
@@ -16,11 +16,13 @@ module.exports = function(){
 	};
 	
 	module.ensureFolder(dataviewDir);
-	module.ensureFolder(graphsDir);
+	module.ensureFolder(experimentsDir);
 	
 	module.createGraphSave = function(experimentName, startDate, graph, type){
 		if(!experimentName || !startDate || !graph) return undefined;
-		let saveFolder = path.join(graphsDir, experimentName);
+		let saveFolder = path.join(experimentsDir, experimentName);
+		module.ensureFolder(saveFolder);
+		saveFolder = path.join(saveFolder, "Graphs");
 		module.ensureFolder(saveFolder);
 		saveFolder = path.join(saveFolder, graph.title);
 		module.ensureFolder(saveFolder);
@@ -62,6 +64,50 @@ module.exports = function(){
 			saveFile.close(start.getHours()+"h"+start.getMinutes()+"m"+start.getSeconds()+"s to "+today.getHours()+"h"+today.getMinutes()+"m"+today.getSeconds()+"s");
 		else
 			saveFile.close(start.getDay()+"-"+start.getMonth()+(today.getFullYear() !== start.getFullYear() ? "-"+start.getFullYear() : "")+" "+start.getHours()+":"+start.getMinutes());
+	};
+	
+	module.saveExperiment = function(name, id, dataflowStructure){
+		let saveFile = path.join(experimentsDir, name); // This should use id instead
+		module.ensureFolder(saveFile);
+		saveFile = path.join(saveFile, "experiment.json");
+		
+		let data = {};
+		
+		if(fs.existsSync(saveFile)){
+			data = JSON.parse(fs.readFileSync(saveFile).toString("utf8"));
+		}
+		
+		data.name = name;
+		data.id = id;
+		data.dataflow = dataflowStructure;
+		
+		fs.writeFileSync(saveFile, JSON.stringify(data));
+	};
+	
+	module.getSavedExperiments = function(){
+		let saved = [];
+		let contents = fs.readdirSync(experimentsDir);
+		for(let file of contents){
+			let loc = path.join(experimentsDir, file);
+			if(fs.existsSync(loc) && fs.lstatSync(loc).isDirectory()){
+				let saveFile = path.join(loc, "experiment.json");
+				if(fs.existsSync(saveFile)){
+					try {
+						let data = JSON.parse(fs.readFileSync(saveFile).toString("utf8"));
+						if (data.hasOwnProperty("name") && data.hasOwnProperty("id")) {
+							saved.push(data);
+						}
+					} catch(e){
+						console.error("Error parsing possible experiment save file (Located at " + saveFile + "):", e);
+					}
+				}
+			}
+		}
+		return saved;
+	};
+	
+	module.experimentHasSaveFile = function(name){
+		return fs.existsSync(path.join(experimentsDir, name, "experiment.json")); // This should use id instead
 	};
 	
 	class SaveFile {

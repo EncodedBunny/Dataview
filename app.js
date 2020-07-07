@@ -2,16 +2,14 @@ module.exports = function(port){
 	const createError = require('http-errors');
 	const express = require('express');
 	const path = require('path');
-	//const cookieParser = require('cookie-parser');
 	const logger = require('morgan');
 	const sassMiddleware = require('node-sass-middleware');
 	const fileUpload = require('express-fileupload');
-	//const postCssMiddleware = require('postcss-middleware');
-	//const autoprefixer = require("autoprefixer");
 	const http = require('http');
 	const url = require("url");
 	const favicon = require('serve-favicon');
 	const session = require("express-session");
+	const crypto = require("crypto");
 	
 	Array.prototype.remove = function(x) {
 		let i = this.indexOf(+x);
@@ -33,20 +31,33 @@ module.exports = function(port){
 	const experimentsRouter = require('./routes/experiments')(deviceManager, experimentManager, fileManager);
 	const settingsRouter = require('./routes/settings');
 	const driversRouter = require('./routes/drivers')(driverManager, fileManager);
-
+	
+	const settings = require("./settings");
+	
+	const cp = require("child_process");
+	
+	let child = cp.spawn(path.join(__dirname, "node_modules", "electron", "dist", "electron.exe"), [path.join(__dirname, "interface.js")], {
+		stdio: [ "ignore", "ignore", "ignore" ]
+	});
+	
 	let app = express();
 	
 	app.use(logger('dev'));
 	app.use(express.json());
 	app.use(express.urlencoded({ extended: false }));
-	//app.use(cookieParser());
 	
 	app.set("views", path.join(__dirname, "views"));
 	app.set("view engine", "twig");
 	app.disable("x-powered-by");
 	
+	let sessionSecret = settings.getSetting("sessionSecret");
+	if(sessionSecret === undefined || sessionSecret.length <= 0){
+		sessionSecret = crypto.randomBytes(32).toString("hex");
+		settings.setSetting("sessionSecret", sessionSecret);
+	}
+	
 	let sessionConfig = {
-		secret: "The cake is a lie",
+		secret: sessionSecret,
 		name: "dv_sid",
 		resave: false,
 		saveUninitialized: true,
