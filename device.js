@@ -39,7 +39,9 @@ class Device{
 		this._extraData = extraData;
 		this._sensors = {};
 		this._actuators = {};
+		this._peripherals = {};
 		this._locations = undefined;
+		this._i2cEnabled = false;
 	}
 	
 	/**
@@ -110,6 +112,10 @@ class Device{
 		return this._actuators;
 	}
 	
+	get peripherals(){
+		return this._peripherals;
+	}
+	
 	/**
 	 * The current available locations of this device, it is either an object containing the current free locations in
 	 * this device grouped by I/O capabilities, or an object with the location group types as keys and the I/O grouped
@@ -119,6 +125,23 @@ class Device{
 	 */
 	get locations(){
 		return this._locations;
+	}
+	
+	get isI2CEnabled(){
+		return this._i2cEnabled;
+	}
+	
+	get canEnableI2C(){
+		let i2c = this.driver.getI2C(this.model);
+		if(!i2c) return false;
+		if(this.locations.hasOwnProperty("_io")){
+			return (this.locations._io.indexOf(Number.parseInt(i2c.sda.value)) !== -1) && (this.locations._io.indexOf(Number.parseInt(i2c.scl.value)) !== -1);
+		} else{
+			if(this.locations.hasOwnProperty(i2c.sda.type) && this.locations.hasOwnProperty(i2c.scl.type)){
+				return (this.locations[i2c.sda.type]._io.indexOf(Number.parseInt(i2c.sda.value)) !== -1) && (this.locations[i2c.scl.type]._io.indexOf(Number.parseInt(i2c.scl.value)) !== -1);
+			}
+			return false;
+		}
 	}
 	
 	/**
@@ -149,6 +172,40 @@ class Device{
 		return false;
 	}
 	
+	addPeripheral(id, name, protocols, locations, extraData){
+		for(let loc of locations){
+			if(!this._removeLocation(loc.value, loc.type, "io")) return false;
+		}
+		this._peripherals[id] = {
+			name: name,
+			locs: locations,
+			protocols: protocols,
+			extraData: extraData
+		};
+		return true;
+	}
+	
+	setI2C(enabled){
+		let i2c = this.driver.getI2C(this.model);
+		if(!i2c) return false;
+		if(enabled !== this.isI2CEnabled){
+			if(enabled){
+				if(!this.canEnableI2C) return false;
+				this._removeLocation(i2c.sda.value, i2c.sda.type, "io");
+				this._removeLocation(i2c.scl.value, i2c.scl.type, "io");
+			} else{
+				if(this.locations.hasOwnProperty("_io")){
+					this.locations._io.push(Number.parseInt(i2c.sda.value), Number.parseInt(i2c.scl.value));
+				} else{
+					this.locations[i2c.sda.type]._io.push(Number.parseInt(i2c.sda.value));
+					this.locations[i2c.scl.type]._io.push(Number.parseInt(i2c.scl.value));
+				}
+			}
+			this._i2cEnabled = enabled;
+		}
+		return true;
+	}
+	
 	/**
 	 * Serves as a common function between the addSensor and addActuator functions, adds a LocationHolder as a value to
 	 * the informed location with the id as key, removing the location for the available locations object
@@ -162,24 +219,29 @@ class Device{
 	 */
 	_registerLocation(id, array, capability, name, location){
 		if(this._locations.hasOwnProperty("_io") !== (location.type === undefined)) return false;
-		let locList;
-		if(this._locations.hasOwnProperty("_io")) {
-			locList = this._locations;
-		} else{
-			if(!this._locations.hasOwnProperty(location.type)) return false;
-			locList = this._locations[location.type];
-		}
-		if(locList._io.includes(Number.parseInt(location.value))){
-			locList._io.remove(location.value);
-		} else if(locList["_" + capability].includes(Number.parseInt(location.value))){
-			locList["_" + capability].remove(location.value);
-		} else {
-			return false;
-		}
+		if(!this._removeLocation(location.value, location.type, capability)) return false;
 		this[array][id] = {
 			name: name,
 			loc: location
 		};
+		return true;
+	}
+	
+	_removeLocation(pin, type, capability){
+		let locList;
+		if(this._locations.hasOwnProperty("_io")) {
+			locList = this._locations;
+		} else{
+			if(!this._locations.hasOwnProperty(type)) return false;
+			locList = this._locations[type];
+		}
+		if(locList._io.includes(Number.parseInt(pin))){
+			locList._io.remove(Number.parseInt(pin));
+		} else if(locList["_" + capability].includes(Number.parseInt(pin))){
+			locList["_" + capability].remove(Number.parseInt(pin));
+		} else {
+			return false;
+		}
 		return true;
 	}
 }

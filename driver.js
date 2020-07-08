@@ -18,6 +18,16 @@ class Driver{
 		this._driver = require(this._folder)(managers);
 		this._driverJson = fs.readJsonSync(path.join(this._folder, "driver.json"));
 		this._modelsJson = fs.pathExistsSync(path.join(this._folder, "models.json")) ? fs.readJsonSync(path.join(this._folder, "models.json")) : undefined;
+		
+		if(this._modelsJson){
+			for(let model of Object.values(this._modelsJson)){
+				if(model.hasOwnProperty("i2c")){
+					Driver._parseI2C(model);
+				}
+			}
+		} else{
+			Driver._parseI2C(this._driverJson);
+		}
 	}
 	
 	/**
@@ -27,13 +37,9 @@ class Driver{
 	 * a driver or an error occurred
 	 */
 	attachDevice(device){
-		console.log("\t0", device);
 		return new Promise((resolve, reject) => {
-			console.log("\t1");
 			if(!(device instanceof Device) || device.driver !== undefined) return reject();
-			console.log("\t2");
 			this._driver.registerDevice(device.id, device.extraData).then(() => {
-				console.log("\t3");
 				device._driver = this;
 				let locations = this.getLocationLayout(device.model);
 				if(typeof locations !== "object"){
@@ -42,14 +48,11 @@ class Driver{
 					for (let type of Object.keys(locations))
 						locations[type] = Driver._parseLocationData(locations[type]);
 				}
-				console.log("\t4");
 				device._locations = locations;
 				resolve();
 			}).catch(err => {
-				console.log("\tE", err);
 				reject();
 			});
-			console.log("\t5");
 		});
 	}
 	
@@ -139,6 +142,21 @@ class Driver{
 		return this._driver.setActuatorValue(deviceID, actuatorID, value);
 	}
 	
+	readSPIByte(deviceID, scl, miso){
+		if(!deviceID || !scl || !miso || !this._driver.readSPIByte) return undefined;
+		return this._driver.readSPIByte(deviceID, scl, miso);
+	}
+	
+	setOutputValue(deviceID, location, value){
+		if(!deviceID || !location || value === undefined) return undefined;
+		return this._driver.outputValue(deviceID, location, value);
+	}
+	
+	getInputValue(deviceID, location){
+		if(!deviceID || !location) return undefined;
+		return this._driver.inputValue(deviceID, location);
+	}
+	
 	/**
 	 * The layout of the physical locations of the device described by this driver
 	 * @returns {Object} The value of the layout property exactly as defined in the device.json file
@@ -156,6 +174,30 @@ class Driver{
 			return this.deviceModels[model].inputs;
 		}
 		return this._driverJson.inputs;
+	}
+	
+	getI2C(model){
+		if(this.deviceModels && this.deviceModels.hasOwnProperty(model) && this.deviceModels[model].hasOwnProperty("i2c")){
+			return this.deviceModels[model].i2c;
+		} else{
+			return this._driverJson.i2c;
+		}
+	}
+	
+	getSupportedProtocols(model){
+		if(this.deviceModels && this.deviceModels.hasOwnProperty(model) && this.deviceModels[model].hasOwnProperty("supportedProtocols")){
+			return this.deviceModels[model].supportedProtocols || [];
+		} else{
+			return this._driverJson.supportedProtocols || [];
+		}
+	}
+	
+	getProtocolLocations(model){
+		if(this.deviceModels && this.deviceModels.hasOwnProperty(model) && this.deviceModels[model].hasOwnProperty("protocolLocations")){
+			return this.deviceModels[model].protocolLocations || [];
+		} else{
+			return this._driverJson.protocolLocations || [];
+		}
 	}
 	
 	getNameForSerialPort(vendorId, productId){
@@ -258,6 +300,21 @@ class Driver{
 			}
 		}
 		return locs;
+	}
+	
+	static _parseI2C(src){
+		if(src.i2c && src.i2c.sda && src.i2c.scl){
+			let sda = src.i2c.sda.split(" ");
+			src.i2c.sda = {
+				type: sda.slice(0, sda.length-1).join(" "),
+				value: sda[sda.length-1]
+			};
+			let scl = src.i2c.scl.split(" ");
+			src.i2c.scl = {
+				type: scl.slice(0, scl.length-1).join(" "),
+				value: scl[scl.length-1]
+			};
+		}
 	}
 }
 

@@ -2,6 +2,55 @@ const Dataflow = require("./dataflow");
 const uuid = require("uuid/v4");
 let Device = require("./device");
 
+const peripherals = {
+	"Max6675": {
+		name: "Max6675",
+		protocols: ["spi"],
+		dataflow: {
+			inputs: [],
+			outputs: ["temperature"],
+			worker: async (device, extraData) => { // Adapted from https://github.com/adafruit/MAX6675-library
+				device.driver.setOutputValue(device.id, locStringToObject(extraData.cs), 0);
+				
+				let temp = device.driver.readSPIByte(device.id, locStringToObject(extraData.scl), locStringToObject(extraData.miso));
+				temp <<= 8;
+				temp |= device.driver.readSPIByte(device.id, locStringToObject(extraData.scl), locStringToObject(extraData.miso));
+				
+				device.driver.setOutputValue(device.id, locStringToObject(extraData.cs), 1);
+				
+				if(temp & 0x4){
+					return [undefined];
+				}
+				temp >>= 3;
+				
+				return [temp*0.25];
+			}
+		},
+		form: {
+			scl: {
+				"type": "location_spi",
+				"isTitled": true,
+				"title": "Clock (SLCK)"
+			},
+			cs: {
+				"type": "location_spi",
+				"isTitled": true,
+				"title": "Chip Select (CS)"
+			},
+			miso: {
+				"type": "location_spi",
+				"isTitled": true,
+				"title": "Data Out (MISO)"
+			}
+		},
+		onCreate: (device, extraData) => {
+			let cs = locStringToObject(extraData.cs);
+			device.driver.setOutputValue(device.id, cs, 1);
+			return [cs, locStringToObject(extraData.scl), locStringToObject(extraData.miso)];
+		}
+	}
+};
+
 /**
  * Manages all the devices, used to add/remove devices, aswell as sensors and actuators to them
  * @module DeviceManager
@@ -57,6 +106,32 @@ module.exports = function (driverManager) {
 				let x = await device.driver.getSensorValue(device.id, id);
 				return [x];
 			});
+			return true;
+		}
+		return false;
+	};
+	
+	module.addPeripheral = function(deviceID, name, model, extraData){
+		if(!name) return false;
+		let perName = name.trim();
+		if(perName <= 0) return false;
+		let device = devices[deviceID];
+		if(!device) return false;
+		let id = uuid();
+		let peripheral = peripherals[model];
+		if(peripheral.onCreate !== undefined){
+			if(!device.addPeripheral(id, perName, peripheral.protocols, peripheral.onCreate(device, extraData), extraData)) return false;
+			let worker;
+			if(peripheral.dataflow.worker[Symbol.toStringTag] === "AsyncFunction"){
+				worker = async () => {
+					await peripheral.dataflow.worker(device, extraData, ...arguments);
+				};
+			} else{
+				worker = () => {
+					peripheral.dataflow.worker(device, extraData, ...arguments);
+				}
+			}
+			Dataflow.registerGlobalNode(perName + " (" + device.name + ")", "Peripherals", peripheral.dataflow.inputs, peripheral.dataflow.outputs, worker);
 			return true;
 		}
 		return false;
@@ -194,5 +269,63 @@ module.exports = function (driverManager) {
 		return undefined;
 	};
 	
+	module.getPeripheralForm = function(deviceId, model){
+		let form = peripherals[model].form;
+		let device = devices[deviceId];
+		let protLocs = device.driver.getProtocolLocations(device.model);
+		
+		for(let field of Object.values(form)){
+			if(field.type.startsWith("location")){
+				field.items = [];
+				if(field.type.indexOf("_") > -1 && field.type.lastIndexOf("_") < field.type.length-1) {
+					let capability = field.type.split("_")[1];
+					switch (capability) {
+						case "spi":
+							for(let type of protLocs["spi"]){
+								let locs = device.locations[type]._io.map((loc) => {
+									return type + " " + loc;
+								});
+								field.items.push(...locs);
+							}
+							break;
+					}
+				}
+				field.type = "list";
+			}
+		}
+		return form;
+	};
+	
+	module.getPeripherals = function(availableProtocols){
+		let res = {};
+		for(let [model, peripheral] of Object.entries(peripherals)){
+			if(peripheral.protocols.every(p => availableProtocols.includes(p))){
+				res[model] = peripheral;
+			}
+		}
+		return res;
+	};
+	
+	/**
+	 * Sets the I2C status in a device, if the device does not support I2C this operation will fail
+	 * @param {string} deviceId The id of the device
+	 * @param {boolean} enabled Whether to enable or disable I2C
+	 * @returns {boolean} True if the I2C status was changed, false if the operation fails
+	 */
+	module.setI2C = function(deviceId, enabled){
+		let device = devices[deviceId];
+		if(!device) return false;
+		return device.setI2C(enabled);
+	};
+	
 	return module;
 };
+
+function locStringToObject(loc){
+	let toks = loc.split(" ");
+	let type = toks.length > 1 ? toks.slice(0, toks.length-1).join(" ") : undefined;
+	return {
+		type: type,
+		value: toks[toks.length-1]
+	};
+}

@@ -18,30 +18,12 @@ const DF_FILE_CON_TO_SLOT = 3;
  */
 class Dataflow {
 	/**
-	 * Creates a new dataflow from a dataflow structure of a file
-	 * @param {Object} fileStructure The dataflow structure, this structure comes from a JSON file that possess the following
-	 * format:
-	 * {
-	 *     nodes: [
-	 *     		[<path>, <position>, {<properties>}],
-	 *     		["category/title", [1, 2], {"prop1": 5}], <-- Node of path "category/title" positioned at x: 1, y: 2 with
-	 *     		...															one property named "prop1" with the value of 5
-	 *     ],
-	 *     connections: [
-	 *     		[<fromNode>, <fromSlot>, <toNode>, <toIndex>],
-	 *     		[0, 1, 2, 0], <-- Connection from the second slot of the node at "nodes" array index 0 to the first slot
-	 *     		...				  of the node index 2
-	 *     ],
-	 *     transform: [number, number, number, number, number, number] <-- The six values of the 2D transformation
-	 * }																   DOMMatrix of the DataflowEditor's canvas
+	 * Creates a new empty dataflow
 	 */
-	constructor(fileStructure){
+	constructor(){
 		this.flowTree = [];
 		this.structure = {nodes: [], connections: [], transform: [1, 0, 0, 1, 0, 0]};
 		this._registeredNodes = {};
-		
-		if(fileStructure)
-			this.loadFileStructure(fileStructure);
 	}
 	
 	/**
@@ -72,6 +54,24 @@ class Dataflow {
 			await node.activate();
 	}
 	
+	/**
+	 * Loads a dataflow structure into this dataflow, overriding it's current structure
+	 * @param {Object} fileStructure The dataflow structure, this structure comes from a JSON file that possess the following
+	 * format:
+	 * {
+	 *     nodes: [
+	 *     		[<path>, <position>, {<properties>}],
+	 *     		["category/title", [1, 2], {"prop1": 5}], <-- Node of path "category/title" positioned at x: 1, y: 2 with
+	 *     		...															one property named "prop1" with the value of 5
+	 *     ],
+	 *     connections: [
+	 *     		[<fromNode>, <fromSlot>, <toNode>, <toIndex>],
+	 *     		[0, 1, 2, 0], <-- Connection from the second slot of the node at "nodes" array index 0 to the first slot
+	 *     		...				  of the node index 2
+	 *     ],
+	 *     transform: [number, number, number, number, number, number] <-- The six values of the 2D transformation
+	 * }																   DOMMatrix of the DataflowEditor's canvas
+	 */
 	loadFileStructure(fileStructure){
 		this.flowTree = [];
 		let indexConversion = [];
@@ -459,14 +459,33 @@ Dataflow.registerGlobalNode("Branch","Control",["value", {name: "condition", typ
 Dataflow.registerGlobalNode("Boolean to Number","Conversion",[{name: "boolean", type: "boolean"}],["number"],(input) => {
 	return input[0] ? [1] : [0];
 });
-Dataflow.registerGlobalNode("Round","Conversion",["float"],["integer"],(input) => {
-	return [Math.round(input[0])];
+Dataflow.registerGlobalNode("Analog Voltage","Conversion",["analog"],["voltage"],(input, props) => {
+	return [props.maxAnalogVoltage*input[0]/(Math.pow(2, props.adcBitResolution)-1)];
+},{
+	adcBitResolution: { value: 10 },
+	maxAnalogVoltage: { value: 5 }
 });
-Dataflow.registerGlobalNode("Floor","Conversion",["float"],["integer"],(input) => {
-	return [Math.floor(input[0])];
-});
-Dataflow.registerGlobalNode("Ceil","Conversion",["float"],["integer"],(input) => {
-	return [Math.ceil(input[0])];
+
+Dataflow.registerGlobalNode("Float to Integer","Conversion",["float"],["integer"],(input, props) => {
+	let x = input[0], res;
+	switch (props.roundingMode) {
+		default:
+		case "Round":
+			res = Math.round(input[0]);
+			break;
+		case "Floor":
+			res = Math.floor(input[0]);
+			break;
+		case "Ceil":
+			res = Math.ceil(input[0]);
+			break;
+	}
+	return [res];
+},{
+	roundingMode: {
+		value: "Round",
+		possibleValues: ["Round", "Floor", "Ceil"]
+	}
 });
 
 class Node {

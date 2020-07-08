@@ -15,7 +15,7 @@
 		{% if experiment.measurement.isActive %}
 			<button class="waves-button waves-float waves-ripple dangerButton" onclick="stopMeasurement()" style="margin-top: 14px; margin-left: 0">Stop</button>
 		{% else %}
-			<button class="waves-button waves-float waves-ripple greenButton" style="margin-top: 14px; margin-left: 0" {% if not experiment.measurement.type %}title="You must configure a measurement before starting one" disabled{% else %} onclick="beginMeasurement()"{% endif %}>Begin</button> <!-- TODO: Check if measurement is configured -->
+			<button class="waves-button waves-float waves-ripple greenButton" style="margin-top: 14px; margin-left: 0" {% if not experiment.measurement.type %}title="You must configure a measurement before starting one" disabled{% else %} onclick="beginMeasurement()"{% endif %}>Begin</button>
 		{% endif %}
 		{% if experiment.dataflow.nodes|length <= 0 %}
 			<span class="warningIcon" title="The experiment's dataflow is empty"></span>

@@ -198,9 +198,12 @@ module.exports = function(port){
 		
 		linkFunction("addSensor", deviceManager.addSensor,["deviceID", "name", "location", "extraData"]);
 		linkFunction("addActuator", deviceManager.addActuator,["deviceID", "name", "location", "extraData"]);
+		linkFunction("addPeripheral", deviceManager.addPeripheral,["deviceID", "name", "model", "extraData"]);
+		linkFunction("getPeripheralForm", deviceManager.getPeripheralForm,["deviceID", "model"]);
 		linkFunction("configureSensor", deviceManager.configureSensor,["deviceID", "sensorID", "location", "extraData"]);
 		linkFunction("configureActuator", deviceManager.configureActuator,["deviceID", "sensorID", "location", "extraData"]);
 		linkFunction("removeSensor", deviceManager.removeSensor,["deviceID", "sensorID"],{deviceID: checkAndGetFromUrl("devices")});
+		linkFunction("setDeviceI2C", deviceManager.setI2C,["deviceID", "enabled"]);
 		
 		linkFunction("addExperiment", experimentManager.addExperiment,["name"]);
 		linkFunction("getExperiment", experimentManager.getExperiment,["id"]);

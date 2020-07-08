@@ -30,11 +30,16 @@ module.exports = function (driverManager, deviceManager) {
 					type: device.deviceType,
 					model: device.model,
 					sensors: device.sensors,
-					actuators: device.actuators
+					actuators: device.actuators,
+					i2cEnabled: device.isI2CEnabled,
+					canEnableI2C: device.canEnableI2C,
+					peripherals: device.peripherals
 				},
 				deviceID: req.params.device,
 				availableLocations: device.locations,
-				locationLabels: device.driver.locationLabels
+				locationLabels: device.driver.locationLabels,
+				i2c: device.driver.getI2C(device.model),
+				peripheralModels: Object.keys(deviceManager.getPeripherals(device.driver.getSupportedProtocols(device.model)))
 			});
 		} else {
 			next();

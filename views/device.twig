@@ -56,6 +56,39 @@
 			</div>
 		</div>
 	</div>
+	<h3>Peripherals</h3>
+	{% for id in device.peripherals|keys %}
+		<div class="container" style="width: 19.2%; height: 250px">
+			<header>
+				<span class="centerText title">{{ device.peripherals[id].name }}</span>
+			</header>
+			<div class="mainView">
+				<span>Protocol: {{ device.peripherals[id].protocols|join(', ') }}</span>
+			</div>
+			<footer class="footer">
+				<button class="dangerButton waves-light waves-button waves-float" onclick="removePeripheral('{{ id }}')">Remove</button>
+				<button class="waves-light waves-button waves-float" onclick="reconfigurePeripheral('{{ id }}')">Configure</button>
+			</footer>
+		</div>
+	{% endfor %}
+	<div class="container placeholder" style="width: 19.2%; height: 250px;">
+		<div class="plusCircleButton" id="addPeripheral">
+			<span class="plusCircleText">+</span>
+		</div>
+	</div>
+	<h3>I&sup2;C</h3>
+	{% if i2c %}
+		<span class="subHeader">I&sup2;C is available in this device at the following locations:</span>
+		<div class="tagged"><span class="tag">SDA</span><span class="text">{{ i2c.sda.type }} location {{ i2c.sda.pin }}</span></div>
+		<div class="tagged"><span class="tag">SCL</span><span class="text">{{ i2c.scl.type }} location {{ i2c.scl.pin }}</span></div>
+		{% if device.i2cEnabled %}
+			<button class="waves-button waves-float waves-ripple dangerButton" onclick="setI2C(false)">Disable I&sup2;C</button>
+		{% else %}
+			<button class="waves-button waves-float waves-ripple greenButton" {% if not device.canEnableI2C %}title="One or more I&sup2;C pins are already being used" disabled{% else %} onclick="setI2C(true)"{% endif %}>Enable I&sup2;C</button>
+		{% endif %}
+	{% else %}
+		<span class="subHeader">I&sup2;C is not available in this device</span>
+	{% endif %}
 {% endblock %}
 
 {% block scripts %}
@@ -65,6 +98,19 @@
 			"name": {
 				"type": "textbox",
 				"isTitled": true
+			}
+		};
+		let peripheralBaseForm = {
+			"name": {
+				"type": "textbox",
+				"isTitled": true,
+				"title": "Peripheral Name"
+			},
+			"model": {
+				"type": "list",
+				"isTitled": true,
+				"title": "Model",
+				"items": {{ peripheralModels|json_encode|raw }}
 			}
 		};
 		let locs = {{ availableLocations|json_encode|raw }};
@@ -86,7 +132,14 @@
 				title: locLabels.locationTitle
 			}
 		};
-		
+
+		function setI2C(enabled){
+			socket.emit("setDeviceI2C", {deviceID: "{{ deviceID }}", enabled: enabled}, (res) => {
+				if(!res) alert("An error has occurred");
+				else reload();
+			});
+		}
+
 		function _registerAddDialog(type){
 			document.getElementById("add" + type).addEventListener("click", () => {
 				baseForm.name.title = type + " Name";
@@ -152,7 +205,21 @@
 		Waves.init();
 		_registerAddDialog("Sensor");
 		_registerAddDialog("Actuator");
-		
+
+		document.getElementById("addPeripheral").addEventListener("click", () => {
+			let window = displayWindow("Add New Peripheral", 450, createForm(peripheralBaseForm, "next", (baseData) => {
+				closeWindow(window);
+				socket.emit("getPeripheralForm", {deviceID: "{{ deviceID }}", model: baseData.model}, (form) => {
+					displayWindow("Configure Peripheral", 450, createForm(form, "add peripheral", (data) => {
+						socket.emit("addPeripheral", {deviceID: "{{ deviceID }}", name: baseData.name, model: baseData.model, extraData: data}, res => {
+							if(!res) alert("An error has occurred");
+							else reload();
+						});
+					}));
+				});
+			}));
+		});
+
 		function reconfigureSensor(id){
 			_displayReconfigureDialog("Sensor", device.sensors[id]);
 		}

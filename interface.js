@@ -15,7 +15,6 @@ function createWindow () {
 	
 	win.loadFile("interface/index.html");
 	win.removeMenu();
-	win.webContents.openDevTools();
 	
 	win.webContents.on("did-finish-load", () => {
 		win.webContents.send("portValue", 3000);

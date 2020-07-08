@@ -198,9 +198,8 @@ module.exports = function(deviceManager, driverManager, fileManager) {
 		constructor(name, id, dataflowStructure) {
 			this._name = name;
 			this._id = id;
-			this._dataflow = new Dataflow(dataflowStructure);
+			this._dataflow = new Dataflow();
 			this._graphs = [];
-			this._outputs = [];
 			this._measurement = undefined;
 			this._measurementTask = undefined;
 			this._listeners = {};
@@ -234,6 +233,8 @@ module.exports = function(deviceManager, driverManager, fileManager) {
 					possibleValues: ["Milliseconds", "Seconds", "Minutes", "Hours"]
 				}
 			});
+			// Dataflow structure loaded after all nodes are registered in order to avoid missing nodes
+			this._dataflow.loadFileStructure(dataflowStructure);
 			
 			if(!fileManager.experimentHasSaveFile(name)){
 				fileManager.saveExperiment(this._name, this._id, dataflowStructure);
