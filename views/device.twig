@@ -57,23 +57,25 @@
 		</div>
 	</div>
 	<h3>Peripherals</h3>
-	{% for id in device.peripherals|keys %}
-		<div class="container" style="width: 19.2%; height: 250px">
-			<header>
-				<span class="centerText title">{{ device.peripherals[id].name }}</span>
-			</header>
-			<div class="mainView">
-				<span>Protocol: {{ device.peripherals[id].protocols|join(', ') }}</span>
+	<div class="devicesGroupContainer highlighted" id="peripheralsGroupContainer">
+		{% for id in device.peripherals|keys %}
+			<div class="container" style="width: 19.2%; height: 250px">
+				<header>
+					<span class="centerText title">{{ device.peripherals[id].name }}</span>
+				</header>
+				<div class="mainView">
+					<span>Protocol: {{ device.peripherals[id].protocols|join(', ') }}</span>
+				</div>
+				<footer class="footer">
+					<button class="dangerButton waves-light waves-button waves-float" onclick="removePeripheral('{{ id }}')">Remove</button>
+					<button class="waves-light waves-button waves-float" onclick="reconfigurePeripheral('{{ id }}')">Configure</button>
+				</footer>
 			</div>
-			<footer class="footer">
-				<button class="dangerButton waves-light waves-button waves-float" onclick="removePeripheral('{{ id }}')">Remove</button>
-				<button class="waves-light waves-button waves-float" onclick="reconfigurePeripheral('{{ id }}')">Configure</button>
-			</footer>
-		</div>
-	{% endfor %}
-	<div class="container placeholder" style="width: 19.2%; height: 250px;">
-		<div class="plusCircleButton" id="addPeripheral">
-			<span class="plusCircleText">+</span>
+		{% endfor %}
+		<div class="container placeholder" style="width: 19.2%; height: 250px;">
+			<div class="plusCircleButton" id="addPeripheral">
+				<span class="plusCircleText">+</span>
+			</div>
 		</div>
 	</div>
 	<h3>I&sup2;C</h3>

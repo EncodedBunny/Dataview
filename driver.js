@@ -142,9 +142,41 @@ class Driver{
 		return this._driver.setActuatorValue(deviceID, actuatorID, value);
 	}
 	
-	readSPIByte(deviceID, scl, miso){
-		if(!deviceID || !scl || !miso || !this._driver.readSPIByte) return undefined;
-		return this._driver.readSPIByte(deviceID, scl, miso);
+	readSPI8(deviceID, cpin, miso){
+		if(!deviceID || !cpin || !miso || !this._driver.readSPI8) return undefined;
+		return this._driver.readSPI8(deviceID, cpin, miso);
+	}
+	
+	readSPI16(deviceID, cpin, miso){
+		if(!deviceID || !cpin || !miso) return undefined;
+		if(this._driver.readSPI16){
+			return this._driver.readSPI16(deviceID, cpin, miso);
+		} else if(this._driver.readSPI8){
+			return (this._driver.readSPI8(deviceID, cpin, miso) << 8) | this._driver.readSPI8(deviceID, cpin, miso);
+		}
+		return undefined;
+	}
+	
+	readSPI24(deviceID, cpin, miso){
+		if(!deviceID || !cpin || !miso) return undefined;
+		if(this._driver.readSPI24){
+			return this._driver.readSPI24(deviceID, cpin, miso);
+		} else if(this._driver.readSPI8){
+			if(this._driver.readSPI16){
+				return (this._driver.readSPI16(deviceID, cpin, miso) << 8) | this._driver.readSPI8(deviceID, cpin, miso);
+			} else {
+				return (this._driver.readSPI8(deviceID, cpin, miso) << 16) | (this._driver.readSPI8(deviceID, cpin, miso) << 8) | this._driver.readSPI8(deviceID, cpin, miso);
+			}
+		}
+	}
+	
+	transferSPI8(deviceID, scl, miso, mosi, value){
+		if(!deviceID || !scl || !miso || !mosi || value === undefined || !this._driver.transferSPI8) return undefined;
+		return this._driver.readSPI8(deviceID, scl, miso, mosi, value);
+	}
+	
+	swapEndianness16(x){
+		return ((x << 8) | ((x >> 8) & 0xFF)) & 0xFFFF;
 	}
 	
 	setOutputValue(deviceID, location, value){

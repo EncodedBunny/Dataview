@@ -3,52 +3,8 @@ const uuid = require("uuid/v4");
 let Device = require("./device");
 
 const peripherals = {
-	"Max6675": {
-		name: "Max6675",
-		protocols: ["spi"],
-		dataflow: {
-			inputs: [],
-			outputs: ["temperature"],
-			worker: async (device, extraData) => { // Adapted from https://github.com/adafruit/MAX6675-library
-				device.driver.setOutputValue(device.id, locStringToObject(extraData.cs), 0);
-				
-				let temp = device.driver.readSPIByte(device.id, locStringToObject(extraData.scl), locStringToObject(extraData.miso));
-				temp <<= 8;
-				temp |= device.driver.readSPIByte(device.id, locStringToObject(extraData.scl), locStringToObject(extraData.miso));
-				
-				device.driver.setOutputValue(device.id, locStringToObject(extraData.cs), 1);
-				
-				if(temp & 0x4){
-					return [undefined];
-				}
-				temp >>= 3;
-				
-				return [temp*0.25];
-			}
-		},
-		form: {
-			scl: {
-				"type": "location_spi",
-				"isTitled": true,
-				"title": "Clock (SLCK)"
-			},
-			cs: {
-				"type": "location_spi",
-				"isTitled": true,
-				"title": "Chip Select (CS)"
-			},
-			miso: {
-				"type": "location_spi",
-				"isTitled": true,
-				"title": "Data Out (MISO)"
-			}
-		},
-		onCreate: (device, extraData) => {
-			let cs = locStringToObject(extraData.cs);
-			device.driver.setOutputValue(device.id, cs, 1);
-			return [cs, locStringToObject(extraData.scl), locStringToObject(extraData.miso)];
-		}
-	}
+	"Max6675": require("./peripherals/max6675"),
+	"BMP280": require("./peripherals/bmp280")
 };
 
 /**
@@ -320,12 +276,3 @@ module.exports = function (driverManager) {
 	
 	return module;
 };
-
-function locStringToObject(loc){
-	let toks = loc.split(" ");
-	let type = toks.length > 1 ? toks.slice(0, toks.length-1).join(" ") : undefined;
-	return {
-		type: type,
-		value: toks[toks.length-1]
-	};
-}
