@@ -18,9 +18,6 @@ module.exports = {
 			
 			device.driver.setOutputValue(device.id, utils.locStringToObject(extraData.cs), 1);
 			
-			if(temp & 0x4){
-				return [undefined];
-			}
 			temp >>= 3;
 			
 			return [temp*0.25];

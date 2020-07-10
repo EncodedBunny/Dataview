@@ -172,7 +172,7 @@ class Driver{
 	
 	transferSPI8(deviceID, scl, miso, mosi, value){
 		if(!deviceID || !scl || !miso || !mosi || value === undefined || !this._driver.transferSPI8) return undefined;
-		return this._driver.readSPI8(deviceID, scl, miso, mosi, value);
+		return this._driver.transferSPI8(deviceID, scl, miso, mosi, value);
 	}
 	
 	swapEndianness16(x){

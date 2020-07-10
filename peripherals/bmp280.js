@@ -19,7 +19,7 @@ module.exports = {
 			let miso = utils.locStringToObject(extraData.miso);
 			let mosi = utils.locStringToObject(extraData.mosi);
 			
-			let adcT = _bmp280_readReg24(device, scl, cs, miso, mosi, 0xFA);
+			let adcT = await _bmp280_readReg24(device, scl, cs, miso, mosi, 0xFA);
 			adcT >>= 4;
 			
 			let tFine = (((adcT >> 3) - (extraData.t1 << 1)) * extraData.t2) >> 11 +
@@ -27,7 +27,7 @@ module.exports = {
 			
 			let t = (tFine * 5 + 128) >> 8;
 			
-			let adcP = _bmp280_readReg24(device, scl, cs, miso, mosi, 0xF7);
+			let adcP = await _bmp280_readReg24(device, scl, cs, miso, mosi, 0xF7);
 			adcP >>= 4;
 			
 			let var1 = BigInt(tFine) - 128000n;
@@ -96,32 +96,32 @@ module.exports = {
 			"items": oversampleVals
 		}
 	},
-	onCreate: (device, extraData) => {
+	onCreate: async (device, extraData) => {
 		let cs = utils.locStringToObject(extraData.cs);
 		let scl = utils.locStringToObject(extraData.scl);
 		let miso = utils.locStringToObject(extraData.miso);
 		let mosi = utils.locStringToObject(extraData.mosi);
-		device.driver.setOutputValue(device.id, cs, 1);
+		await device.driver.setOutputValue(device.id, cs, 1);
 		
-		extraData.t1 = _bmp280_readRegLE(device, scl, cs, miso, mosi, 0x88);
-		extraData.t2 = _bmp280_readRegLE(device, scl, cs, miso, mosi, 0x8A);
-		extraData.t3 = _bmp280_readRegLE(device, scl, cs, miso, mosi, 0x8C);
+		extraData.t1 = await _bmp280_readRegLE(device, scl, cs, miso, mosi, 0x88);
+		extraData.t2 = await _bmp280_readRegLE(device, scl, cs, miso, mosi, 0x8A);
+		extraData.t3 = await _bmp280_readRegLE(device, scl, cs, miso, mosi, 0x8C);
 		
-		extraData.p1 = _bmp280_readRegLE(device, scl, cs, miso, mosi, 0x8E);
-		extraData.p2 = _bmp280_readRegLE(device, scl, cs, miso, mosi, 0x90);
-		extraData.p3 = _bmp280_readRegLE(device, scl, cs, miso, mosi, 0x92);
-		extraData.p4 = _bmp280_readRegLE(device, scl, cs, miso, mosi, 0x94);
-		extraData.p5 = _bmp280_readRegLE(device, scl, cs, miso, mosi, 0x96);
-		extraData.p6 = _bmp280_readRegLE(device, scl, cs, miso, mosi, 0x98);
-		extraData.p7 = _bmp280_readRegLE(device, scl, cs, miso, mosi, 0x9A);
-		extraData.p8 = _bmp280_readRegLE(device, scl, cs, miso, mosi, 0x9C);
-		extraData.p9 = _bmp280_readRegLE(device, scl, cs, miso, mosi, 0x9E);
+		extraData.p1 = await _bmp280_readRegLE(device, scl, cs, miso, mosi, 0x8E);
+		extraData.p2 = await _bmp280_readRegLE(device, scl, cs, miso, mosi, 0x90);
+		extraData.p3 = await _bmp280_readRegLE(device, scl, cs, miso, mosi, 0x92);
+		extraData.p4 = await _bmp280_readRegLE(device, scl, cs, miso, mosi, 0x94);
+		extraData.p5 = await _bmp280_readRegLE(device, scl, cs, miso, mosi, 0x96);
+		extraData.p6 = await _bmp280_readRegLE(device, scl, cs, miso, mosi, 0x98);
+		extraData.p7 = await _bmp280_readRegLE(device, scl, cs, miso, mosi, 0x9A);
+		extraData.p8 = await _bmp280_readRegLE(device, scl, cs, miso, mosi, 0x9C);
+		extraData.p9 = await _bmp280_readRegLE(device, scl, cs, miso, mosi, 0x9E);
 		
-		_bmp280_writeReg(device, scl, cs, miso, mosi, 0xF5, (
+		await _bmp280_writeReg(device, scl, cs, miso, mosi, 0xF5, (
 			utils.getListPosition(extraData.stby, stbyVals, 0x07) << 5)
 			| (utils.getListPosition(extraData.filterLvl, filterVals, 0x04) << 2));
 		
-		_bmp280_writeReg(device, scl, cs, miso, mosi, 0xF4, (
+		await _bmp280_writeReg(device, scl, cs, miso, mosi, 0xF4, (
 			utils.getListPosition(extraData.tempOversample, oversampleVals, 0x05) << 5)
 			| (utils.getListPosition(extraData.pressOversample, oversampleVals, 0x05) << 5) << 2);
 		
@@ -129,25 +129,25 @@ module.exports = {
 	}
 };
 
-function _bmp280_readRegLE(device, scl, cs, miso, mosi, reg){
-	device.driver.setOutputValue(device.id, cs, 0);
-	device.driver.transferSPI8(device.id, scl, miso, mosi, reg | 0x80);
-	let res = device.driver.swapEndianness16(device.driver.readSPI16(device.id, cs, miso));
-	device.driver.setOutputValue(device.id, cs, 1);
+async function _bmp280_readRegLE(device, scl, cs, miso, mosi, reg){
+	await device.driver.setOutputValue(device.id, cs, 0);
+	await device.driver.transferSPI8(device.id, scl, miso, mosi, reg | 0x80);
+	let res = await device.driver.swapEndianness16(device.driver.readSPI16(device.id, cs, miso));
+	await device.driver.setOutputValue(device.id, cs, 1);
 	return res;
 }
 
-function _bmp280_readReg24(device, scl, cs, miso, mosi, reg){
-	device.driver.setOutputValue(device.id, cs, 0);
-	device.driver.transferSPI8(device.id, scl, miso, mosi, reg | 0x80);
-	let res = device.driver.readSPI24(device.id, cs, miso);
-	device.driver.setOutputValue(device.id, cs, 1);
+async function _bmp280_readReg24(device, scl, cs, miso, mosi, reg){
+	await device.driver.setOutputValue(device.id, cs, 0);
+	await device.driver.transferSPI8(device.id, scl, miso, mosi, reg | 0x80);
+	let res = await device.driver.readSPI24(device.id, cs, miso);
+	await device.driver.setOutputValue(device.id, cs, 1);
 	return res;
 }
 
-function _bmp280_writeReg(device, scl, cs, miso, mosi, reg, value){
-	device.driver.setOutputValue(device.id, cs, 0);
-	device.driver.transferSPI8(device.id, scl, miso, mosi, reg & ~0x80);
-	device.driver.transferSPI8(device.id, scl, miso, mosi, value);
-	device.driver.setOutputValue(device.id, cs, 1);
+async function _bmp280_writeReg(device, scl, cs, miso, mosi, reg, value){
+	await device.driver.setOutputValue(device.id, cs, 0);
+	await device.driver.transferSPI8(device.id, scl, miso, mosi, reg & ~0x80);
+	await device.driver.transferSPI8(device.id, scl, miso, mosi, value);
+	await device.driver.setOutputValue(device.id, cs, 1);
 }

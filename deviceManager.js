@@ -76,7 +76,7 @@ module.exports = function (driverManager) {
 		let id = uuid();
 		let peripheral = peripherals[model];
 		if(peripheral.onCreate !== undefined){
-			if(!device.addPeripheral(id, perName, peripheral.protocols, peripheral.onCreate(device, extraData), extraData)) return false;
+			device.addPeripheral(id, perName, peripheral.protocols, peripheral.onCreate(device, extraData), extraData);
 			let worker;
 			if(peripheral.dataflow.worker[Symbol.toStringTag] === "AsyncFunction"){
 				worker = async () => {
