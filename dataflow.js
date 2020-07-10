@@ -73,6 +73,7 @@ class Dataflow {
 	 * }																   DOMMatrix of the DataflowEditor's canvas
 	 */
 	loadFileStructure(fileStructure){
+		if(fileStructure === undefined) return;
 		this.flowTree = [];
 		let indexConversion = [];
 		
