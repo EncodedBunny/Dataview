@@ -84,7 +84,7 @@ module.exports = function (driverManager) {
 				};
 			} else{
 				worker = () => {
-					peripheral.dataflow.worker(device, extraData, ...arguments);
+					return peripheral.dataflow.worker(device, extraData, ...arguments);
 				}
 			}
 			Dataflow.registerGlobalNode(perName + " (" + device.name + ")", "Peripherals", peripheral.dataflow.inputs, peripheral.dataflow.outputs, worker);
