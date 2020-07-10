@@ -80,7 +80,7 @@ module.exports = function (driverManager) {
 			let worker;
 			if(peripheral.dataflow.worker[Symbol.toStringTag] === "AsyncFunction"){
 				worker = async () => {
-					await peripheral.dataflow.worker(device, extraData, ...arguments);
+					return await peripheral.dataflow.worker(device, extraData, ...arguments);
 				};
 			} else{
 				worker = () => {
