@@ -172,13 +172,19 @@ class Device{
 		return false;
 	}
 	
-	addPeripheral(id, name, protocols, locations, extraData){
-		for(let loc of locations){
+	async addPeripheral(id, name, protocols, locations, extraData){
+		let locs;
+		if(locations.then !== undefined){
+			locs = await locations;
+		} else{
+			locs = locations;
+		}
+		for(let loc of locs){
 			if(!this._removeLocation(loc.value, loc.type, "io")) return false;
 		}
 		this._peripherals[id] = {
 			name: name,
-			locs: locations,
+			locs: locs,
 			protocols: protocols,
 			extraData: extraData
 		};
