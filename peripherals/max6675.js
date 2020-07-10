@@ -10,13 +10,13 @@ module.exports = {
 		inputs: [],
 		outputs: ["temperature"],
 		worker: async (device, extraData) => {
-			device.driver.setOutputValue(device.id, utils.locStringToObject(extraData.cs), 0);
+			await device.driver.setOutputValue(device.id, utils.locStringToObject(extraData.cs), 0);
 			
-			let temp = device.driver.readSPI8(device.id, utils.locStringToObject(extraData.scl), utils.locStringToObject(extraData.miso));
+			let temp = await device.driver.readSPI8(device.id, utils.locStringToObject(extraData.scl), utils.locStringToObject(extraData.miso));
 			temp <<= 8;
-			temp |= device.driver.readSPI8(device.id, utils.locStringToObject(extraData.scl), utils.locStringToObject(extraData.miso));
+			temp |= await device.driver.readSPI8(device.id, utils.locStringToObject(extraData.scl), utils.locStringToObject(extraData.miso));
 			
-			device.driver.setOutputValue(device.id, utils.locStringToObject(extraData.cs), 1);
+			await device.driver.setOutputValue(device.id, utils.locStringToObject(extraData.cs), 1);
 			
 			temp >>= 3;
 			
@@ -40,9 +40,9 @@ module.exports = {
 			"title": "Data Out (MISO)"
 		}
 	},
-	onCreate: (device, extraData) => {
+	onCreate: async (device, extraData) => {
 		let cs = utils.locStringToObject(extraData.cs);
-		device.driver.setOutputValue(device.id, cs, 1);
+		await device.driver.setOutputValue(device.id, cs, 1);
 		return [cs, utils.locStringToObject(extraData.scl), utils.locStringToObject(extraData.miso)];
 	}
 };
