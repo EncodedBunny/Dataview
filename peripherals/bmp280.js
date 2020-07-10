@@ -123,7 +123,7 @@ module.exports = {
 		
 		await _bmp280_writeReg(device, scl, cs, miso, mosi, 0xF4, (
 			utils.getListPosition(extraData.tempOversample, oversampleVals, 0x05) << 5)
-			| (utils.getListPosition(extraData.pressOversample, oversampleVals, 0x05) << 5) << 2);
+			| (utils.getListPosition(extraData.pressOversample, oversampleVals, 0x05) << 2) | 0x03);
 		
 		return [cs, scl, miso, mosi];
 	}
